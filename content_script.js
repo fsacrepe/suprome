@@ -1,15 +1,5 @@
 const port = chrome.runtime.connect({ name: 'suprome-content_script' });
 
-function waitForEl(selector, callback) {
-  if ($(selector).length) {
-    callback();
-  } else {
-    setTimeout(function() {
-      waitForEl(selector, callback);
-    }, 100);
-  }
-};
-
 function createMessageBody(content) {
   return {
     sender: 'content_script',
@@ -79,7 +69,7 @@ function fillFormAndOrder(config) {
     $('input[name="credit_card[ovv]"]').val(config['suprome-cc'].cvv);
   }
   $('input[name="order[terms]"]').each((id, el) => el.click());
-  //$('input.button.checkout').click();
+  $('input.button.checkout').click();
   port.postMessage(createMessageBody({ done: true }));
 }
 

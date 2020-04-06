@@ -66,13 +66,13 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
           if (config['suprome-config'].autoclear) clearCCStorage();
         }
         if (message.error === 'NOT_FOUND') {
+          state = null;
           portContentScript.postMessage(createMessage({ start: true }, config));
         }
       });
       chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         if (!start) return;
         const { status, url } = tab;
-        console.log(tab);
         if (status === 'complete' && url.match(productSectionRegexp) && state !== 'product-section') {
           state = 'product-section';
           const message = createMessage({ page: 'product-section' }, config);
