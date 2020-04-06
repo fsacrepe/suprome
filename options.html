@@ -1,0 +1,216 @@
+<html>
+  <head>
+    <title>Suprome</title>
+    <style>
+      .padded {
+        padding-left: 30px;
+        padding-right: 30px;
+      }
+      div[class^="pure-u"] {
+        margin-bottom: 5px;
+        margin-top: 5px;
+      }
+      .button-small {
+        font-size: 0.6em !important;
+      }
+      .button-warning {
+        background: rgb(223, 117, 20) !important;
+        color: white !important;
+      }
+      .warn {
+        background-color: #F5CC4C;
+        border-radius: 10px;
+        font-size: 13px;
+        padding: 10px;
+      }
+      #configSaved {
+        visibility: hidden;
+        font-size: 13px;
+      }
+    </style>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.1/build/pure-min.css" integrity="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47" crossorigin="anonymous">
+  </head>
+  <body width="100%">
+    <h1 class="padded">Suprome config</h1>
+    <form class="pure-form pure-g">
+      <div class="pure-u-1-4">
+        <div class="padded">
+          <div class="pure-u-1">
+            <h2>Product Details</h2>
+          </div>
+          <div class="pure-u-1">
+            <select id="productSection">
+              <option value="jackets">Jackets</option>
+              <option value="shirts">Shirts</option>
+              <option value="tops_sweaters">Tops/Sweaters</option>
+              <option value="sweatshirts">Sweatshirts</option>
+              <option value="pants">Pants</option>
+              <option value="t-shirts">T-shirts</option>
+              <option value="hats">Hats</option>
+              <option value="bags">Bags</option>
+              <option value="accessories">Accessories</option>
+              <option value="shoes">Shoes</option>
+              <option value="skate">Skate</option>
+            </select>
+          </div>
+          <div class="pure-u-1">
+            <input class="pure-input-1-2" id="productKeyword" type="text" placeholder="Keyword" />
+          </div>
+          <div class="pure-u-1">
+            <input class="pure-input-1-2" id="productColors" type="text" placeholder="Color" />
+            <button id="addColor" class="pure-button pure-button-primary pure-input-1-5">+</button>
+            <button id="popColor" class="pure-button button-warning pure-input-1-5">-</button>
+          </div>
+          <div id="configProductColors" class="pure-u-1"></div>
+          <div class="pure-u-1">
+            <input class="pure-input-1-2" id="productSizes" type="text" placeholder="Size"/>
+            <button id="addSize" class="pure-button pure-button-primary pure-input-1-5">+</button>
+            <button id="popSize" class="pure-button button-warning pure-input-1-5">-</button>
+          </div>
+          <div id="configProductSizes" class="pure-u-1"></div>
+        </div>
+      </div>
+      <div class="pure-u-1-4">
+        <div class="padded">
+          <div class="pure-u-1">
+            <h2>Extension Config</h2>
+          </div>
+          <div class="pure-u-1-2">
+            <label for="extensionTimeout">Timeout (seconds)</label>
+            <input id="extensionTimeout" class="pure-input-1" type="number" value="60"/>
+          </div>
+          <div class="pure-u-1-2">
+            <label for="extensionAutoclearStorage">Automatically clear Credit Card info</label>
+            <input id="extensionAutoclearStorage" class="pure-input-1" type="checkbox" />
+          </div>
+        </div>
+      </div>
+    </form>
+    <form class="pure-form pure-g">
+      <div class="pure-u-1-4">
+        <div class="padded">
+          <div class="pure-u-1">
+            <h2>Billing Informations</h2>
+          </div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingName" type="text" placeholder="Name"/></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingEmail" type="email" placeholder="Email"/></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingTel" type="text" placeholder="Tel"/></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingAddress" type="text" placeholder="Address"/></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingAddress2" type="text" placeholder="Address 2"/></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingAddress3" type="text" placeholder="Address 3"/></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingCity" type="text" placeholder="City" /></div>
+          <div class="pure-u-1"><input class="pure-input-1" id="billingZip" type="text" placeholder="Postal Code"/></div>
+          <div class="pure-u-1">
+            <select class="pure-input-1" id="billingCountry">
+              <option value="GB">UK</option>
+              <option value="NB">UK (N. IRELAND)</option>
+              <option value="">-</option>
+              <option value="AT">AUSTRIA</option>
+              <option value="BY">BELARUS</option>
+              <option value="BE">BELGIUM</option>
+              <option value="BG">BULGARIA</option>
+              <option value="HR">CROATIA</option>
+              <option value="CZ">CZECH REPUBLIC</option>
+              <option value="DK">DENMARK</option>
+              <option value="EE">ESTONIA</option>
+              <option value="FI">FINLAND</option>
+              <option value="FR">FRANCE</option>
+              <option value="DE">GERMANY</option>
+              <option value="GR">GREECE</option>
+              <option value="HU">HUNGARY</option>
+              <option value="IS">ICELAND</option>
+              <option value="IE">IRELAND</option>
+              <option value="IT">ITALY</option>
+              <option value="LV">LATVIA</option>
+              <option value="LT">LITHUANIA</option>
+              <option value="LU">LUXEMBOURG</option>
+              <option value="MC">MONACO</option>
+              <option value="NL">NETHERLANDS</option>
+              <option value="NO">NORWAY</option>
+              <option value="PL">POLAND</option>
+              <option value="PT">PORTUGAL</option>
+              <option value="RO">ROMANIA</option>
+              <option value="RU">RUSSIA</option>
+              <option value="SK">SLOVAKIA</option>
+              <option value="SI">SLOVENIA</option>
+              <option value="ES">SPAIN</option>
+              <option value="SE">SWEDEN</option>
+              <option value="CH">SWITZERLAND</option>
+              <option value="TR">TURKEY</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="pure-u-1-4">
+        <div class="padded">
+          <div class="pure-u-1">
+            <h2>Credit Card</h2>
+            <p class="warn">
+              &#x26A0; Storage isn't safe, better use Paypal or clearing storage after use
+            </p>
+          </div>
+          <div class="pure-u-1">
+            <select class="pure-input-1" id="ccType">
+              <option value="visa">Visa</option>
+              <option value="american_express">American Express</option>
+              <option value="master">Master Card</option>
+              <option value="solo">Solo</option>
+              <option value="paypal">Paypal</option>
+            </select>
+          </div>
+          <div class="pure-u-1">
+            <input class="pure-input-1" id="ccCnb" type="text" placeholder="Number"/>
+          </div>
+          <div class="pure-u-1">
+            <select class="pure-input-1-4" id="ccMonth">
+              <option value="01">01</option>
+              <option value="02">02</option>
+              <option value="03">03</option>
+              <option value="04">04</option>
+              <option value="05">05</option>
+              <option value="06">06</option>
+              <option value="07">07</option>
+              <option value="08">08</option>
+              <option value="09">09</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+            </select>
+            <select class="pure-input-1-4" id="ccYear">
+              <option value="2020">2020</option>
+              <option value="2021">2021</option>
+              <option value="2022">2022</option>
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
+            </select>
+          </div>
+          <div class="pure-u-1">
+            <input class="pure-input-2-4" type="text" id="ccCvv" placeholder="CVV" />
+          </div>
+        </div>
+      </div>
+    </form>
+    <div class="pure-u-1">
+      <div class="padded">
+        <div class="pure-u-1">
+          <p id="configSaved">✅ Config successfully saved !</p>
+        </div>
+        <button id="submitAll" class="pure-button pure-button-primary">
+          Save All
+        </button>
+        <button id="resetAll" class="pure-button button-warning pure-button-primary">
+          Reset All
+        </button>
+      </div>
+    </div>
+  </body>
+  <script src="jquery.min.js"></script>
+  <script src="options.js"></script>
+</html>

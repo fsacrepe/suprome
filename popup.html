@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Suprome</title>
+    <style>
+      @font-face {
+        font-family: 'Supreme';
+        src: url('font/Futura Medium Italic font.ttf');
+      }
+      h1 {
+        color: white;
+        background-color: rgb(231, 43, 0);
+        font-family: 'Supreme';
+        padding-bottom: 5px;
+        padding-top: 5px;
+        text-align: center;
+      }
+      button {
+        font-family: 'Supreme';
+        font-size: 13px;
+      }
+      #button-container {
+        display: flex;
+        flex-direction: row;
+      }
+      #startBtn {
+        background-color: rgb(231, 43, 0);
+        border-radius: 10px;
+        color: white;
+        margin-right: 5px;
+      }
+      #stopBtn {
+        background-color: black;
+        border-radius: 10px;
+        color: white;
+        margin-right: 40px;
+      }
+      #goToConfig {
+        background-color: black;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Suprome</h1>
+    <div id="button-container">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn">Stop</button>
+      <button id="goToConfig">Configure</button>
+    </div>
+    <script src="jquery.min.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
