@@ -69,8 +69,10 @@ function fillFormAndOrder(config) {
     $('input[name="credit_card[ovv]"]').val(config['suprome-cc'].cvv);
   }
   $('input[name="order[terms]"]').each((id, el) => el.click());
-  $('input.button.checkout').click();
-  port.postMessage(createMessageBody({ done: true }));
+  setTimeout(() => {
+    $('input.button.checkout').click();
+    port.postMessage(createMessageBody({ done: true }));
+  }, 1050);
 }
 
 function setConfig(message) {
