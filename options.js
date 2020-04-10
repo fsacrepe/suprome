@@ -22,12 +22,18 @@ let config = {
     month: '',
     year: '',
     cvv: '',
+  },
+  'suprome-config': {
+    autoclear: false,
+    timeout: 3000,
+    checkoutDelay: 2000,
   }
 }
 
 function getFromStorage() {
   chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (storageConfig) => {
     config = { ...config, ...storageConfig };
+    console.log('config', config);
     getProductConfig();
     getBillingConfig();
     getCreditConfig();
@@ -166,12 +172,14 @@ function getCreditConfig() {
 function getExtensionConfig() {
   $('#extensionTimeout').val(config['suprome-config'].timeout);
   $('#extensionAutoclearStorage').prop('checked', config['suprome-config'].autoclear);
+  $('#extensionCheckoutDelay').val(config['suprome-config'].checkoutDelay);
 }
 
 function saveExtensionConfig() {
   const timeout = $('#extensionTimeout').val();
+  const checkoutDelay = $('#extensionCheckoutDelay').val();
   const autoclear = $('#extensionAutoclearStorage').is(':checked') ? true : false;
-  saveInStorage('config', { timeout, autoclear });
+  saveInStorage('config', { timeout, autoclear, checkoutDelay });
 }
 
 function saveAll(e) {

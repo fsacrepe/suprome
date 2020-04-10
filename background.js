@@ -1,5 +1,5 @@
 let start = false;
-let state;
+let page = null;
 let portPopup;
 let portContentScript;
 const productSectionRegexp = new RegExp(/^https:\/\/www.supremenewyork.com\/shop\/all\/[a-z\_\-]+$/)
@@ -20,6 +20,14 @@ function clearCCStorage() {
   });
 }
 
+function stopBot(config) {
+  start = false;
+  console.timeEnd('Execution time');
+  if (config['suprome-config'].autoclear)
+    clearCCStorage();
+}
+
+// Used to set extension's icon in greyscale if not on supremenewyork.com
 chrome.runtime.onInstalled.addListener(() => {
   chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
     chrome.declarativeContent.onPageChanged.addRules([
@@ -35,56 +43,46 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Receive finished requests from supremenewyork.com, so content_script can go quicker
+chrome.webRequest.onCompleted.addListener((r) => {
+  if (!start) return;
+  if (r.url.match(productSectionRegexp) && page !== 'product-section') {
+    page = 'product-section';
+  } else if (r.url.match(productSelectedRegexp) && page !== 'product-selected') {
+    page = 'product-selected';
+  } else if (r.url === checkoutUrl && page !== 'checkout') {
+    page = 'checkout';
+  }
+}, { urls: ["*://www.supremenewyork.com/*"] }, []);
+
+// Get config first
 chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
+
+  // Get connection links to communicate between js files
   chrome.runtime.onConnect.addListener((_port) => {
-    if (_port.name === 'suprome-popup') {
+
+    if (_port.name === 'suprome-popup') { // Message coming from popup
       portPopup = _port;
       portPopup.onMessage.addListener((message) => {
-        console.log('[MESSAGE] Popup', message);
         if (message.start === true) {
           console.time('Execution time');
           start = true;
           portContentScript.postMessage(createMessage({ start: true }, config));
-          setTimeout(() => {
-            start = false;
-            if (config['suprome-config'].autoclear) clearCCStorage();
-          }, config['suprome-config'].timeout * 1000);
-        }
-        if (message.stop) {
-          start = false;
-          if (config['suprome-config'].autoclear) clearCCStorage();
+          setTimeout(() => stopBot(config), config['suprome-config'].timeout * 1000);
+        } else if (message.stop) {
+          stopBot(config);
         }
       });
-    }
-    else if (_port.name === 'suprome-content_script') {
+    } else if (_port.name === 'suprome-content_script') { // Message coming from content script
       portContentScript = _port;
       portContentScript.onMessage.addListener((message) => {
-        console.log('[MESSAGE] Content Script', message);
         if (message.done) {
-          start = false;
-          console.timeEnd('Execution time');
-          if (config['suprome-config'].autoclear) clearCCStorage();
-        }
-        if (message.error === 'NOT_FOUND') {
+          stopBot(config);
+        } else if (message.error === 'NOT_FOUND') {
           state = null;
           portContentScript.postMessage(createMessage({ start: true }, config));
-        }
-      });
-      chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-        if (!start) return;
-        const { status, url } = tab;
-        if (status === 'complete' && url.match(productSectionRegexp) && state !== 'product-section') {
-          state = 'product-section';
-          const message = createMessage({ page: 'product-section' }, config);
-          portContentScript.postMessage(message);
-        } else if (status === 'complete' && url.match(productSelectedRegexp) && state !== 'product-selected') {
-          state = 'product-selected';
-          const message = createMessage({ page: 'product-selected' }, config);
-          portContentScript.postMessage(message);
-        } else if (status === 'complete' && url === checkoutUrl && state !== 'checkout') {
-          state = 'checkout';
-          const message = createMessage({ page: 'checkout' }, config);
-          portContentScript.postMessage(message);
+        } else if (message.loaded) {
+          portContentScript.postMessage(createMessage({ page }, config));
         }
       });
     }

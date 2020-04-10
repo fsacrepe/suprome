@@ -8,7 +8,8 @@
   },
   "content_scripts": [{
     "matches": ["https://www.supremenewyork.com/*"],
-    "js": ["jquery.min.js", "content_script.js"]
+    "js": ["jquery.min.js", "content_script.js"],
+    "run_at": "document_end"
   }],
   "background": {
     "scripts": ["background.js"]
@@ -16,6 +17,8 @@
   "options_page": "options.html",
   "permissions": [
     "declarativeContent",
+    "webRequest",
+    "*://www.supremenewyork.com/",
     "storage",
     "tabs"
   ]
