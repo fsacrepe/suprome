@@ -16,6 +16,14 @@ function isCardDeclined() {
   return $('.failed').length;
 }
 
+function isSuccess() {
+  return $('.tab-confirmation.selected').length;
+}
+
+function isPaymentTab() {
+  return $('.tab-payment.selected').length;
+}
+
 function goToProductSection(config) {
   const section = config['suprome-product'].section;
   location.href = `https://www.supremenewyork.com/shop/all/${section}`;
@@ -62,13 +70,7 @@ function fillFormAndOrder(config) {
   $(document).ready(() => {
     setTimeout(() => {
       $('input.button.checkout').click();
-
-      // Manage Card declined, or tells bot to stop if successful
-      $('#content').on('DOMSubtreeModified', () => {
-        if (isCardDeclined()) window.history.back();
-        else port.postMessage(createMessageBody({ done: true }));
-      });
-
+      $(document).unbind();
     }, config['suprome-config'].checkoutDelay);
   });
 
@@ -108,8 +110,11 @@ port.onMessage.addListener((message) => {
           $('#cart').unbind();
         });
       } else if (message.page === 'checkout') {
-        if (isProductSoldOut()) window.history.back();
-        else fillFormAndOrder(config);
+        if (isPaymentTab()) fillFormAndOrder(config);
+        else if (isProductSoldOut()) window.history.back();
+      } else if (message.page === 'checkout-response') {
+        if (isCardDeclined()) window.history.back()
+        else if (isSuccess()) port.postMessage(createMessageBody({ done: true }));
       }
     }
   });

@@ -1,10 +1,10 @@
-let start = false;
 let page = null;
-let portPopup;
-let portContentScript;
-const productSectionRegexp = new RegExp(/^https:\/\/www.supremenewyork.com\/shop\/all\/[a-z\_\-]+$/)
-const productSelectedRegexp = new RegExp(/^https:\/\/www.supremenewyork.com\/shop\/[a-z\_\-]+\/[a-z0-9]+\/[a-z0-9]+$/);
+let start = false;
+const cartUrl = 'https://www.supremenewyork.com/shop/cart';
 const checkoutUrl = 'https://www.supremenewyork.com/checkout/';
+const productSectionUrl = 'https://www.supremenewyork.com/shop/all/';
+const productSelectedUrl = 'https://www.supremenewyork.com/shop/';
+const checkoutResponseUrl = 'https://www.supremenewyork.com/checkout.json';
 
 function createMessage(content, config = {}) {
   return {
@@ -20,10 +20,11 @@ function clearCCStorage() {
   });
 }
 
-function stopBot(config) {
+function stopBot(config = null) {
+  page = null;
   start = false;
   console.timeEnd('Execution time');
-  if (config['suprome-config'].autoclear)
+  if (!!config && config['suprome-config'].autoclear)
     clearCCStorage();
 }
 
@@ -43,20 +44,17 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Receive finished requests from supremenewyork.com, so content_script can go quicker
-chrome.webRequest.onCompleted.addListener((r) => {
-  if (!start) return;
-  if (r.url.match(productSectionRegexp) && page !== 'product-section') {
-    page = 'product-section';
-  } else if (r.url.match(productSelectedRegexp) && page !== 'product-selected') {
-    page = 'product-selected';
-  } else if (r.url === checkoutUrl && page !== 'checkout') {
-    page = 'checkout';
-  }
-}, { urls: ["*://www.supremenewyork.com/*"] }, []);
+// Block images and css files from loading
+chrome.webRequest.onBeforeRequest.addListener(
+  r => ({cancel: start && (r.url.indexOf('.jpg') != -1 || r.url.indexOf('.gif') != -1 || r.url.indexOf('.css') != 1)}),
+  { urls: ['https://assets.supremenewyork.com/*', 'https://*.cloudfront.net/*'] },
+  ['blocking']
+);
 
 // Get config first
 chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
+  let portPopup; // Used to store communication port between popup and background
+  let portContentScript; // Used to store communication port between content script and background
 
   // Get connection links to communicate between js files
   chrome.runtime.onConnect.addListener((_port) => {
@@ -64,7 +62,7 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
     if (_port.name === 'suprome-popup') { // Message coming from popup
       portPopup = _port;
       portPopup.onMessage.addListener((message) => {
-        if (message.start === true) {
+        if (message.start) {
           console.time('Execution time');
           start = true;
           portContentScript.postMessage(createMessage({ start: true }, config));
@@ -79,12 +77,32 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
         if (message.done) {
           stopBot(config);
         } else if (message.error === 'NOT_FOUND') {
-          state = null;
+          page = null;
           portContentScript.postMessage(createMessage({ start: true }, config));
         } else if (message.loaded) {
           portContentScript.postMessage(createMessage({ page }, config));
         }
       });
     }
+
   });
+
+  // Receive finished requests from supremenewyork.com, so content_script can go quicker
+  chrome.webRequest.onCompleted.addListener((r) => {
+    if (!start) return;
+    if (r.url.indexOf(productSectionUrl) != -1 && page !== 'product-section') {
+      page = 'product-section';
+    } else if (r.url.indexOf(productSelectedUrl + config['suprome-product'].section) != -1 && page !== 'product-selected') {
+      page = 'product-selected';
+    } else if (r.url === checkoutUrl && page !== 'checkout') {
+      page = 'checkout';
+    } else if (r.url === checkoutResponseUrl && page !== 'checkout-response') {
+      // View does not reload on checkout response, so I directly send the message here
+      page = 'checkout-response';
+      portContentScript.postMessage(createMessage({page: 'checkout-response'}, config));
+    } else if (r.url.indexOf('paypal.com') != -1) {
+      stopBot(config);
+    }
+  }, { urls: ["*://www.supremenewyork.com/*", "https://www.paypal.com/*"] }, []);
+
 });

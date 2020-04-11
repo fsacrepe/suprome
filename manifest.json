@@ -16,9 +16,10 @@
   },
   "options_page": "options.html",
   "permissions": [
+    "<all_urls>",
     "declarativeContent",
+    "webRequestBlocking",
     "webRequest",
-    "*://www.supremenewyork.com/",
     "storage",
     "tabs"
   ]
