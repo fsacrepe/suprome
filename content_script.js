@@ -8,20 +8,12 @@ function createMessageBody(content) {
   };
 }
 
-function isProductSoldOut() {
-  return $('.out_of_stock').length;
-}
-
 function isCardDeclined() {
   return $('.failed').length;
 }
 
 function isSuccess() {
   return $('.tab-confirmation.selected').length;
-}
-
-function isPaymentTab() {
-  return $('.tab-payment.selected').length;
 }
 
 function goToProductSection(config) {
@@ -110,8 +102,9 @@ port.onMessage.addListener((message) => {
           $('#cart').unbind();
         });
       } else if (message.page === 'checkout') {
-        if (isPaymentTab()) fillFormAndOrder(config);
-        else if (isProductSoldOut()) window.history.back();
+        fillFormAndOrder(config);
+      } else if (message.page === 'checkout-oos') {
+        window.history.back();
       } else if (message.page === 'checkout-response') {
         if (isCardDeclined()) window.history.back()
         else if (isSuccess()) port.postMessage(createMessageBody({ done: true }));

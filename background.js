@@ -96,10 +96,13 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
       page = 'product-selected';
     } else if (r.url === checkoutUrl && page !== 'checkout') {
       page = 'checkout';
+    } else if (r.url.indexOf(cartUrl) && page !== 'checkout-oos') {
+      // Product out of stock
+      page = 'checkout-oos';
     } else if (r.url === checkoutResponseUrl && page !== 'checkout-response') {
       // View does not reload on checkout response, so I directly send the message here
       page = 'checkout-response';
-      portContentScript.postMessage(createMessage({page: 'checkout-response'}, config));
+      portContentScript.postMessage(createMessage({ page }, config));
     } else if (r.url.indexOf('paypal.com') != -1) {
       stopBot(config);
     }
