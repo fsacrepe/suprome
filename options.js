@@ -78,7 +78,10 @@ function popSize(e) {
 
 function getSizes() {
   const container = $('#configProductSizes');
-  container.html(`<p>Sizes: [${config['suprome-product'].sizes.join(', ')}]</p>`);
+  container.html(null);
+  config['suprome-product'].sizes.forEach((color, index) => {
+    container.append(`<p class="badge">${index + 1}. ${color}</p>`)
+  })
 }
 
 function addColor(e) {
@@ -99,7 +102,10 @@ function popColor(e) {
 
 function getColors() {
   const container = $('#configProductColors');
-  container.html(`<p>Colors: [${config['suprome-product'].colors.join(', ')}]</p>`);
+  container.html(null);
+  config['suprome-product'].colors.forEach((color, index) => {
+    container.append(`<p class="badge">${index + 1}. ${color}</>`);
+  });
 }
 
 function saveProductConfig() {

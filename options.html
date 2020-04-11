@@ -27,6 +27,22 @@
         visibility: hidden;
         font-size: 13px;
       }
+      .badge {
+        background-color: rgb(231, 43, 0);
+        border-radius: 5px;
+        color: white;
+        margin-right: 10px;
+        padding: 5px 10px;
+        text-align: center;
+      }
+      #configProductSizes {
+        display: flex;
+        flex-direction: row;
+      }
+      #configProductColors {
+        display: flex;
+        flex-direction: row;
+      }
     </style>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.1/build/pure-min.css" integrity="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47" crossorigin="anonymous">
@@ -59,14 +75,19 @@
           </div>
           <div class="pure-u-1">
             <input class="pure-input-1-2" id="productColors" type="text" placeholder="Color" />
-            <button id="addColor" class="pure-button pure-button-primary pure-input-1-5">+</button>
-            <button id="popColor" class="pure-button button-warning pure-input-1-5">-</button>
+            <button id="addColor" class="pure-button pure-button-primary pure-input-1-5">Add</button>
+            <button id="popColor" class="pure-button button-warning pure-input-1-5">Remove</button>
           </div>
           <div id="configProductColors" class="pure-u-1"></div>
           <div class="pure-u-1">
-            <input class="pure-input-1-2" id="productSizes" type="text" placeholder="Size"/>
-            <button id="addSize" class="pure-button pure-button-primary pure-input-1-5">+</button>
-            <button id="popSize" class="pure-button button-warning pure-input-1-5">-</button>
+            <select class="pure-input-1-2" id="productSizes">
+              <option value="Small">Small</option>
+              <option value="Medium">Medium</option>
+              <option value="Large">Large</option>
+              <option value="XLarge">XLarge</option>
+            </select>
+            <button id="addSize" class="pure-button pure-button-primary pure-input-1-5">Add</button>
+            <button id="popSize" class="pure-button button-warning pure-input-1-5">Remove</button>
           </div>
           <div id="configProductSizes" class="pure-u-1"></div>
         </div>

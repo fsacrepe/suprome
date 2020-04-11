@@ -62,6 +62,7 @@ function fillFormAndOrder(config) {
   $(document).ready(() => {
     setTimeout(() => {
       $('input.button.checkout').click();
+      port.postMessage(createMessageBody({ checkout: true }));
       $(document).unbind();
     }, config['suprome-config'].checkoutDelay);
   });

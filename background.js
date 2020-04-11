@@ -64,6 +64,7 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
       portPopup.onMessage.addListener((message) => {
         if (message.start) {
           console.time('Execution time');
+          console.time('Time to checkout');
           start = true;
           portContentScript.postMessage(createMessage({ start: true }, config));
           setTimeout(() => stopBot(config), config['suprome-config'].timeout * 1000);
@@ -81,6 +82,8 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
           portContentScript.postMessage(createMessage({ start: true }, config));
         } else if (message.loaded) {
           portContentScript.postMessage(createMessage({ page }, config));
+        } else if (message.checkout) {
+          console.timeEnd('Time to checkout');
         }
       });
     }
