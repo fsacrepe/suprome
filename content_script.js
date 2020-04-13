@@ -16,6 +16,10 @@ function isSuccess() {
   return $('.tab-confirmation.selected').length;
 }
 
+function isAllSoldOut() {
+  return !$('a[data-sold-out="false"]').length;
+}
+
 function goToProductSection(config) {
   const section = config['suprome-product'].section;
   location.href = `https://www.supremenewyork.com/shop/all/${section}`;
@@ -44,6 +48,8 @@ function selectColorAndSize(config) {
     });
 
   });
+
+
 
   // For each color, click on color product if not sold out
   config['suprome-product'].colors.every((color) => {
@@ -97,11 +103,15 @@ port.onMessage.addListener((message) => {
       } else if (message.page === 'product-section') {
         selectProductFromAll(config);
       } else if (message.page === 'product-selected') {
-        selectColorAndSize(config);
-        $('#cart').on('DOMSubtreeModified', () => {
-          goToCheckout();
-          $('#cart').unbind();
-        });
+        if (isAllSoldOut()) {
+          port.postMessage(createMessageBody({ error: 'NEED_RESTOCK'}));
+        } else {
+          selectColorAndSize(config);
+          $('#cart').on('DOMSubtreeModified', () => {
+            goToCheckout();
+            $('#cart').unbind();
+          });
+        }
       } else if (message.page === 'checkout') {
         fillFormAndOrder(config);
       } else if (message.page === 'checkout-oos') {
@@ -109,6 +119,8 @@ port.onMessage.addListener((message) => {
       } else if (message.page === 'checkout-response') {
         if (isCardDeclined()) window.history.back()
         else if (isSuccess()) port.postMessage(createMessageBody({ done: true }));
+      } else if (message.reload) {
+        window.location.reload();
       }
     }
   });

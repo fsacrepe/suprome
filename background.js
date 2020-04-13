@@ -80,6 +80,9 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
         } else if (message.error === 'NOT_FOUND') {
           page = null;
           portContentScript.postMessage(createMessage({ start: true }, config));
+        } else if (message.error === 'NEED_RESTOCK') {
+          page = null
+          portContentScript.postMessage(createMessage({ reload: true }, config));
         } else if (message.loaded) {
           portContentScript.postMessage(createMessage({ page }, config));
         } else if (message.checkout) {
