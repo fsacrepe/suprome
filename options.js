@@ -27,6 +27,7 @@ let config = {
     autoclear: false,
     timeout: 3000,
     checkoutDelay: 2000,
+    restockReloadDelay: 1000,
   }
 }
 
@@ -179,13 +180,15 @@ function getExtensionConfig() {
   $('#extensionTimeout').val(config['suprome-config'].timeout);
   $('#extensionAutoclearStorage').prop('checked', config['suprome-config'].autoclear);
   $('#extensionCheckoutDelay').val(config['suprome-config'].checkoutDelay);
+  $('#extensionRestockReloadDelay').val(config['suprome-config'].restockReloadDelay);
 }
 
 function saveExtensionConfig() {
   const timeout = $('#extensionTimeout').val();
   const checkoutDelay = $('#extensionCheckoutDelay').val();
   const autoclear = $('#extensionAutoclearStorage').is(':checked') ? true : false;
-  saveInStorage('config', { timeout, autoclear, checkoutDelay });
+  const restockReloadDelay = $('#extensionRestockReloadDelay').val();
+  saveInStorage('config', { timeout, autoclear, checkoutDelay, restockReloadDelay });
 }
 
 function saveAll(e) {

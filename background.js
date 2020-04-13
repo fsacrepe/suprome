@@ -82,7 +82,7 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
           portContentScript.postMessage(createMessage({ start: true }, config));
         } else if (message.error === 'NEED_RESTOCK') {
           page = null
-          portContentScript.postMessage(createMessage({ reload: true }, config));
+          setTimeout(() => portContentScript.postMessage(createMessage({ reload: true }, config)), config['suprome-config'].restockReloadDelay);
         } else if (message.loaded) {
           portContentScript.postMessage(createMessage({ page }, config));
         } else if (message.checkout) {
