@@ -1,6 +1,16 @@
 const port = chrome.runtime.connect({ name: 'suprome-content_script' });
 port.postMessage({ sender: 'content_script', loaded: true });
 
+function waitForEl(selector, callback) {
+  if ($(selector).length) {
+    callback();
+  } else {
+    setTimeout(function() {
+      waitForEl(selector, callback);
+    }, 100);
+  }
+};
+
 function createMessageBody(content) {
   return {
     sender: 'content_script',
@@ -35,21 +45,26 @@ function selectColorAndSize(config) {
   // Create event listener on "Buy" form
   $('#cctrl').on('DOMSubtreeModified', function () {
 
-    // If size exists in size select, set value and click on commit
-    config['suprome-product'].sizes.every(size => {
-      const selectedSize = $(`option:contains(${size})`).first();
-      if (selectedSize.length) {
-        $('#size').val(selectedSize[0].value);
+    if (!config['suprome-product'].sizes.length) {
+      waitForEl('input[name="commit"]', () => {
         $('input[name="commit"]').click();
-        $('#cctrl').unbind(); // <-- Unbind eventlistener to prevent script from running even after bot stopped
-        return false; // <-- used to stop loop, Array.every() stops iterating on return false
-      }
-      return true;
-    });
+        $('#cctrl').unbind();
+      });
+    } else {
+      // If size exists in size select, set value and click on commit
+      config['suprome-product'].sizes.every(size => {
+        const selectedSize = $(`option:contains(${size})`).first();
+        if (selectedSize.length) {
+          $('#size').val(selectedSize[0].value);
+          $('input[name="commit"]').click();
+          $('#cctrl').unbind(); // <-- Unbind eventlistener to prevent script from running even after bot stopped
+          return false; // <-- used to stop loop, Array.every() stops iterating on return false
+        }
+        return true;
+      });
+    }
 
   });
-
-
 
   // For each color, click on color product if not sold out
   config['suprome-product'].colors.every((color) => {
