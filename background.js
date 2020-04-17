@@ -1,60 +1,34 @@
-let page = null;
 let start = false;
-const cartUrl = 'https://www.supremenewyork.com/shop/cart';
-const checkoutUrl = 'https://www.supremenewyork.com/checkout/';
-const productSectionUrl = 'https://www.supremenewyork.com/shop/all/';
-const productSelectedUrl = 'https://www.supremenewyork.com/shop/';
-const checkoutResponseUrl = 'https://www.supremenewyork.com/checkout.json';
 
-function createMessage(content, config = {}) {
-  return {
-    sender: 'background',
-    config,
-    ...content
-  };
+const ERRORS = {
+  PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
+  COLOR_SOLD_OUT: 'COLOR_SOLD_OUT',
+  SIZE_NOT_FOUND: 'SIZE_NOT_FOUND',
+  PRODUCT_SOLD_OUT: 'PRODUCT_SOLD_OUT',
+  CC_DECLINED: 'CC_DECLINED',
+};
+
+function sendMessage(port, message) {
+  port.postMessage({ sender: 'background', ...message });
 }
 
-function clearCCStorage() {
-  chrome.storage.sync.remove('suprome-cc', () => {
-    console.log('[STORAGE] CC Info removed');
-  });
-}
-
-function stopBot(config = null) {
+function stopBot() {
   page = null;
   start = false;
   console.timeEnd('Execution time');
-  if (!!config && config['suprome-config'].autoclear)
-    clearCCStorage();
 }
 
-// Used to set extension's icon in greyscale if not on supremenewyork.com
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
-    chrome.declarativeContent.onPageChanged.addRules([
-      {
-        conditions: [
-          new chrome.declarativeContent.PageStateMatcher({
-            pageUrl: { hostEquals: 'www.supremenewyork.com', schemes: ['https'] }
-          })
-        ],
-        actions: [ new chrome.declarativeContent.ShowPageAction() ]
-      }
-    ]);
-  });
-});
-
-// Block images and css files from loading
-chrome.webRequest.onBeforeRequest.addListener(
-  r => ({cancel: start && (r.url.indexOf('.jpg') != -1 || r.url.indexOf('.gif') != -1 || r.url.indexOf('.css') != 1)}),
-  { urls: ['https://assets.supremenewyork.com/*', 'https://*.cloudfront.net/*'] },
-  ['blocking']
-);
-
 // Get config first
-chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
+chrome.storage.local.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
   let portPopup; // Used to store communication port between popup and background
   let portContentScript; // Used to store communication port between content script and background
+  let botStatus = {
+    colorsIndex: 0,
+    next: null,
+  };
+  let productSection = config['suprome-product'].section;
+
+  console.log('config', config);
 
   // Get connection links to communicate between js files
   chrome.runtime.onConnect.addListener((_port) => {
@@ -64,9 +38,9 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
       portPopup.onMessage.addListener((message) => {
         if (message.start) {
           console.time('Execution time');
-          console.time('Time to checkout');
           start = true;
-          portContentScript.postMessage(createMessage({ start: true }, config));
+          botStatus.colorsIndex = 0;
+          sendMessage(portContentScript, { start: true, section: productSection });
           setTimeout(() => stopBot(config), config['suprome-config'].timeout * 1000);
         } else if (message.stop) {
           stopBot(config);
@@ -75,43 +49,73 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
     } else if (_port.name === 'suprome-content_script') { // Message coming from content script
       portContentScript = _port;
       portContentScript.onMessage.addListener((message) => {
-        if (message.done) {
-          stopBot(config);
-        } else if (message.error === 'NOT_FOUND') {
-          page = null;
-          portContentScript.postMessage(createMessage({ start: true }, config));
-        } else if (message.error === 'NEED_RESTOCK') {
-          page = null
-          setTimeout(() => portContentScript.postMessage(createMessage({ reload: true }, config)), config['suprome-config'].restockReloadDelay);
+        if (message.error === ERRORS.COLOR_SOLD_OUT) {
+          botStatus.colorsIndex++;
+          if (botStatus.colorsIndex === config['suprome-product'].colors.length) {
+            botStatus.colorsIndex = 0;
+            setTimeout(() => sendMessage(portContentScript, { reload: true }), config['suprome-config'].restockReloadDelay);
+          } else {
+            sendMessage(portContentScript, { selectColor: true, color: config['suprome-product'].colors[botStatus.colorsIndex] });
+          }
+        } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
+          botStatus.colorsIndex = 0;
+          setTimeout(() => sendMessage(portContentScript, { reload: true }), 500);
+        } else if (message.error === ERRORS.CC_DECLINED) {
+          botStatus.colorsIndex = 0;
+          sendMessage(portContentScript, { start: true, section: productSection });
         } else if (message.loaded) {
-          portContentScript.postMessage(createMessage({ page }, config));
-        } else if (message.checkout) {
-          console.timeEnd('Time to checkout');
+          sendMessage(portContentScript, botStatus.next);
+          botStatus.next = null;
+        } else if (message.done) {
+          stopBot();
         }
       });
     }
 
   });
 
-  // Receive finished requests from supremenewyork.com, so content_script can go quicker
   chrome.webRequest.onCompleted.addListener((r) => {
     if (!start) return;
-    if (r.url.indexOf(productSectionUrl) != -1 && page !== 'product-section') {
-      page = 'product-section';
-    } else if (r.url.indexOf(productSelectedUrl + config['suprome-product'].section) != -1 && page !== 'product-selected') {
-      page = 'product-selected';
-    } else if (r.url === checkoutUrl && page !== 'checkout') {
-      page = 'checkout';
-    } else if (r.url.indexOf(cartUrl) && page !== 'checkout-oos') {
-      // Product out of stock
-      page = 'checkout-oos';
-    } else if (r.url === checkoutResponseUrl && page !== 'checkout-response') {
-      // View does not reload on checkout response, so I directly send the message here
-      page = 'checkout-response';
-      portContentScript.postMessage(createMessage({ page }, config));
-    } else if (r.url.indexOf('paypal.com') != -1) {
-      stopBot(config);
+    botStatus.next = { findProduct: true, keyword: config['suprome-product'].keyword };
+  }, { urls: [`https://www.supremenewyork.com/shop/all/${productSection}`] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    if (!start) return;
+    if (r.url.indexOf('?') != -1) {
+      sendMessage(portContentScript, { selectSize: true, sizes: config['suprome-product'].sizes });
+    } else {
+      botStatus.next = { selectColor: true, color: config['suprome-product'].colors[0] };
     }
-  }, { urls: ["*://www.supremenewyork.com/*", "https://www.paypal.com/*"] }, []);
+  }, { urls: [`https://www.supremenewyork.com/shop/${productSection}/*/*`] }, []);
+
+  chrome.webRequest.onCompleted.addListener(() => {
+    if (!start) return;
+    sendMessage(portContentScript, { goToCheckout: true });
+  }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
+
+  chrome.webRequest.onCompleted.addListener(() => {
+    if (!start) return;
+    botStatus.next = {
+      placeOrder: true,
+      billing: config['suprome-billing'],
+      cc: config['suprome-cc'],
+      checkoutDelay: config['suprome-config'].checkoutDelay
+    };
+  }, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
+
+  chrome.webRequest.onCompleted.addListener(() => {
+    if (!start) return;
+    botStatus.next = { start: true, section: productSection };
+  }, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
+
+  chrome.webRequest.onCompleted.addListener(() => {
+    if (!start) return;
+    sendMessage(portContentScript, { checkoutResponse: true });
+  }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
+
+  chrome.webRequest.onCompleted.addListener(() => {
+    if (!start) return;
+    stopBot();
+  }, { urls: ['*://www.paypal.com/**'] }, []);
 
 });

@@ -32,7 +32,7 @@ let config = {
 }
 
 function getFromStorage() {
-  chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (storageConfig) => {
+  chrome.storage.local.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (storageConfig) => {
     config = { ...config, ...storageConfig };
     console.log('config', config);
     getProductConfig();
@@ -43,12 +43,13 @@ function getFromStorage() {
 }
 
 function saveInStorage(constant, content) {
-  chrome.storage.sync.set({ [`suprome-${constant}`] : content }, (done) => {
+  chrome.storage.local.set({ [`suprome-${constant}`] : content }, (done) => {
     $('#configSaved').css('visibility', 'visible');
     setTimeout(() => {
       $('#configSaved').css('visibility', 'hidden');
     }, 3000)
     console.log(`Config ${constant} saved`);
+    chrome.runtime.reload();
   });
 }
 
