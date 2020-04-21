@@ -1,11 +1,12 @@
-let config = {
-  'suprome-product': {
+let config = [];
+const configBase = {
+  product: {
     section: '',
     keyword: '',
     sizes: [],
     colors: [],
   },
-  'suprome-billing': {
+  billing: {
     name: '',
     email: '',
     tel: '',
@@ -16,40 +17,36 @@ let config = {
     zip: '',
     country: '',
   },
-  'suprome-cc': {
+  cc: {
     type: '',
     cnb: '',
     month: '',
     year: '',
     cvv: '',
   },
-  'suprome-config': {
+  extension: {
     autoclear: false,
     timeout: 3000,
     checkoutDelay: 2000,
     restockReloadDelay: 1000,
   }
-}
+};
 
 function getFromStorage() {
-  chrome.storage.local.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (storageConfig) => {
-    config = { ...config, ...storageConfig };
-    console.log('config', config);
-    getProductConfig();
-    getBillingConfig();
-    getCreditConfig();
-    getExtensionConfig();
+  chrome.storage.local.get('suprome', (storageConfig) => {
+    config = storageConfig.suprome;
+    changeProfile();
   });
 }
 
-function saveInStorage(constant, content) {
-  chrome.storage.local.set({ [`suprome-${constant}`] : content }, (done) => {
+function saveInStorage() {
+  chrome.storage.local.set({ suprome: config }, (done) => {
     $('#configSaved').css('visibility', 'visible');
     setTimeout(() => {
       $('#configSaved').css('visibility', 'hidden');
     }, 3000)
-    console.log(`Config ${constant} saved`);
-    chrome.runtime.reload();
+    console.log(`Config saved`);
+    //chrome.runtime.reload();
   });
 }
 
@@ -65,32 +62,36 @@ function clearStorage(e) {
 
 function addSize(e) {
   e.preventDefault();
+  const profileId = $('#profileID').val();
   const value = $('#productSizes').val();
   if (!value.length) return;
-  config['suprome-product'].sizes.push(value);
+  config[profileId].product.sizes.push(value);
   getSizes();
   $('#productSizes').val(null);
 }
 
 function popSize(e) {
   e.preventDefault();
-  config['suprome-product'].sizes.pop();
+  const profileId = $('#profileID').val();
+  config[profileId].product.sizes.pop();
   getSizes();
 }
 
 function getSizes() {
   const container = $('#configProductSizes');
+  const profileId = $('#profileID').val();
   container.html(null);
-  config['suprome-product'].sizes.forEach((color, index) => {
+  config[profileId].product.sizes.forEach((color, index) => {
     container.append(`<p class="badge">${index + 1}. ${color}</p>`)
   })
 }
 
 function addColor(e) {
   e.preventDefault();
+  const profileId = $('#profileID').val();
   const value = $('#productColors').val();
   if (!value.length) return;
-  config['suprome-product'].colors.push(value);
+  config[profileId].product.colors.push(value);
   $('#productColors').val(null);
   getColors();
   return false;
@@ -98,33 +99,34 @@ function addColor(e) {
 
 function popColor(e) {
   e.preventDefault();
-  config['suprome-product'].colors.pop();
+  const profileId = $('#profileID').val();
+  config[profileId].product.colors.pop();
   getColors();
 }
 
 function getColors() {
+  const profileId = $('#profileID').val();
   const container = $('#configProductColors');
   container.html(null);
-  config['suprome-product'].colors.forEach((color, index) => {
+  config[profileId].product.colors.forEach((color, index) => {
     container.append(`<p class="badge">${index + 1}. ${color}</>`);
   });
 }
 
 function saveProductConfig() {
-  const section = $('#productSection').val();
-  const keyword = $('#productKeyword').val();
-  const { colors, sizes } = config['suprome-product'];
-  saveInStorage('product', {
-    section,
-    keyword,
-    colors,
-    sizes,
-  });
+  const profileId = $('#profileID').val();
+  config[profileId].product = {
+    section: $('#productSection').val(),
+    keyword: $('#productKeyword').val(),
+    colors: config[profileId].product.colors,
+    sizes: config[profileId].product.sizes,
+  };
+  saveInStorage();
 }
 
-function getProductConfig() {
-  $('#productSection').val(config['suprome-product'].section);
-  $('#productKeyword').val(config['suprome-product'].keyword);
+function getProductConfig(profileId) {
+  $('#productSection').val(config[profileId].product.section);
+  $('#productKeyword').val(config[profileId].product.keyword);
   getSizes();
   getColors();
 }
@@ -132,64 +134,73 @@ function getProductConfig() {
 // Billing
 
 function saveBillingConfig() {
-  const name = $('#billingName').val();
-  const email = $('#billingEmail').val();
-  const tel = $('#billingTel').val();
-  const address = $('#billingAddress').val();
-  const address2 = $('#billingAddress2').val();
-  const address3 = $('#billingAddress3').val();
-  const city = $('#billingCity').val();
-  const zip = $('#billingZip').val();
-  const country = $('#billingCountry').val();
-  saveInStorage('billing', { name, email, tel, address, address2, address3, city, zip, country });
+  const profileId = $('#profileID').val();
+  config[profileId].billing = {
+    name: $('#billingName').val(),
+    email: $('#billingEmail').val(),
+    tel: $('#billingTel').val(),
+    address: $('#billingAddress').val(),
+    address2: $('#billingAddress2').val(),
+    address3: $('#billingAddress3').val(),
+    city: $('#billingCity').val(),
+    zip: $('#billingZip').val(),
+    country: $('#billingCountry').val(),
+  };
+  saveInStorage();
 }
 
-function getBillingConfig() {
-  $('#billingName').val(config['suprome-billing'].name);
-  $('#billingEmail').val(config['suprome-billing'].email);
-  $('#billingTel').val(config['suprome-billing'].tel);
-  $('#billingAddress').val(config['suprome-billing'].address);
-  $('#billingAddress2').val(config['suprome-billing'].address2);
-  $('#billingAddress3').val(config['suprome-billing'].address3);
-  $('#billingCity').val(config['suprome-billing'].city);
-  $('#billingZip').val(config['suprome-billing'].zip);
-  $('#billingCountry').val(config['suprome-billing'].country);
+function getBillingConfig(profileId) {
+  $('#billingName').val(config[profileId].billing.name);
+  $('#billingEmail').val(config[profileId].billing.email);
+  $('#billingTel').val(config[profileId].billing.tel);
+  $('#billingAddress').val(config[profileId].billing.address);
+  $('#billingAddress2').val(config[profileId].billing.address2);
+  $('#billingAddress3').val(config[profileId].billing.address3);
+  $('#billingCity').val(config[profileId].billing.city);
+  $('#billingZip').val(config[profileId].billing.zip);
+  $('#billingCountry').val(config[profileId].billing.country);
 }
 
 // CC
 
 function saveCreditConfig() {
-  const type = $('#ccType').val();
-  const cnb = $('#ccCnb').val();
-  const month = $('#ccMonth').val();
-  const year = $('#ccYear').val();
-  const cvv = $('#ccCvv').val();
-  saveInStorage('cc', { type, cnb, month, year, cvv });
+  const profileId = $('#profileID').val();
+  config[profileId].cc = {
+    type: $('#ccType').val(),
+    cnb: $('#ccCnb').val(),
+    month: $('#ccMonth').val(),
+    year: $('#ccYear').val(),
+    cvv: $('#ccCvv').val(),
+  };
+  saveInStorage();
 }
 
-function getCreditConfig() {
-  $('#ccType').val(config['suprome-cc'].type);
-  $('#ccCnb').val(config['suprome-cc'].cnb);
-  $('#ccMonth').val(config['suprome-cc'].month);
-  $('#ccYear').val(config['suprome-cc'].year);
-  $('#ccCvv').val(config['suprome-cc'].cvv);
+function getCreditConfig(profileId) {
+  $('#ccType').val(config[profileId].cc.type);
+  $('#ccCnb').val(config[profileId].cc.cnb);
+  $('#ccMonth').val(config[profileId].cc.month);
+  $('#ccYear').val(config[profileId].cc.year);
+  $('#ccCvv').val(config[profileId].cc.cvv);
 }
 
 // Extension config
 
-function getExtensionConfig() {
-  $('#extensionTimeout').val(config['suprome-config'].timeout);
-  $('#extensionAutoclearStorage').prop('checked', config['suprome-config'].autoclear);
-  $('#extensionCheckoutDelay').val(config['suprome-config'].checkoutDelay);
-  $('#extensionRestockReloadDelay').val(config['suprome-config'].restockReloadDelay);
+function getExtensionConfig(profileId) {
+  $('#extensionTimeout').val(config[profileId].extension.timeout);
+  $('#extensionAutoclearStorage').prop('checked', config[profileId].extension.autoclear);
+  $('#extensionCheckoutDelay').val(config[profileId].extension.checkoutDelay);
+  $('#extensionRestockReloadDelay').val(config[profileId].extension.restockReloadDelay);
 }
 
 function saveExtensionConfig() {
-  const timeout = $('#extensionTimeout').val();
-  const checkoutDelay = $('#extensionCheckoutDelay').val();
-  const autoclear = $('#extensionAutoclearStorage').is(':checked') ? true : false;
-  const restockReloadDelay = $('#extensionRestockReloadDelay').val();
-  saveInStorage('config', { timeout, autoclear, checkoutDelay, restockReloadDelay });
+  const profileId = $('#profileID').val();
+  config[profileId].extension = {
+    timeout: $('#extensionTimeout').val(),
+    checkoutDelay: $('#extensionCheckoutDelay').val(),
+    autoclear: $('#extensionAutoclearStorage').is(':checked') ? true : false,
+    restockReloadDelay: $('#extensionRestockReloadDelay').val(),
+  }
+  saveInStorage();
 }
 
 function saveAll(e) {
@@ -200,11 +211,24 @@ function saveAll(e) {
   saveExtensionConfig();
 }
 
+// Profile Management
+
+function changeProfile() {
+  const profileId = $('#profileID').val();
+  if (!config[profileId]) config[profileId] = Object.assign({}, configBase);
+  console.log(config);
+  getProductConfig(profileId);
+  getBillingConfig(profileId);
+  getCreditConfig(profileId);
+  getExtensionConfig(profileId);
+}
+
 $('#submitAll').click(saveAll);
 $('#resetAll').click(clearStorage);
 $('#addColor').click(addColor);
 $('#popColor').click(popColor);
 $('#addSize').click(addSize);
 $('#popSize').click(popSize);
+$('#profileID').change(changeProfile);
 
 $(document).ready(getFromStorage);

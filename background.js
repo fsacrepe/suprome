@@ -1,5 +1,3 @@
-let start = false;
-
 const ERRORS = {
   PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
   COLOR_SOLD_OUT: 'COLOR_SOLD_OUT',
@@ -12,23 +10,30 @@ function sendMessage(port, message) {
   port.postMessage({ sender: 'background', ...message });
 }
 
-function stopBot() {
-  page = null;
-  start = false;
-  console.timeEnd('Execution time');
-}
+// Used to set extension's icon in greyscale if not on supremenewyork.com
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
+    chrome.declarativeContent.onPageChanged.addRules([
+      {
+        conditions: [
+          new chrome.declarativeContent.PageStateMatcher({
+            pageUrl: { hostEquals: 'www.supremenewyork.com', schemes: ['https'] }
+          })
+        ],
+        actions: [ new chrome.declarativeContent.ShowPageAction() ]
+      }
+    ]);
+  });
+});
 
 // Get config first
-chrome.storage.local.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
+chrome.storage.local.get('suprome', (_config) => {
+  let config = _config.suprome;
   let portPopup; // Used to store communication port between popup and background
-  let portContentScript; // Used to store communication port between content script and background
-  let botStatus = {
-    colorsIndex: 0,
-    next: null,
-  };
-  let productSection = config['suprome-product'].section;
+  let botStatus = {};
+  let profileGlobalIndex = 0;
 
-  console.log('config', config);
+  const stopBot = (tabId) => botStatus[tabId].start = false;
 
   // Get connection links to communicate between js files
   chrome.runtime.onConnect.addListener((_port) => {
@@ -37,85 +42,99 @@ chrome.storage.local.get(['suprome-product', 'suprome-billing', 'suprome-cc', 's
       portPopup = _port;
       portPopup.onMessage.addListener((message) => {
         if (message.start) {
-          console.time('Execution time');
-          start = true;
-          botStatus.colorsIndex = 0;
-          sendMessage(portContentScript, { start: true, section: productSection });
-          setTimeout(() => stopBot(config), config['suprome-config'].timeout * 1000);
+          for (const tabId in botStatus) {
+            botStatus[tabId].start = true;
+            botStatus[tabId].colorsIndex = 0;
+            sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
+            setTimeout(() => stopBot(tabId), botStatus[tabId].config.extension.timeout * 1000);
+          }
         } else if (message.stop) {
-          stopBot(config);
+          for (const tabId in botStatus) stopBot(tabId);
         }
       });
     } else if (_port.name === 'suprome-content_script') { // Message coming from content script
-      portContentScript = _port;
-      portContentScript.onMessage.addListener((message) => {
+      const tabId = _port.sender.tab.id;
+      if (!botStatus[tabId]) {
+        botStatus = Object.assign({}, botStatus, { [tabId]: { start: false, colorsIndex: 0, next: null, portContentScript: _port, config: config[profileGlobalIndex++] } });
+      } else {
+        botStatus[tabId].portContentScript = _port;
+      }
+      botStatus[tabId].portContentScript.onMessage.addListener((message) => {
         if (message.error === ERRORS.COLOR_SOLD_OUT) {
-          botStatus.colorsIndex++;
-          if (botStatus.colorsIndex === config['suprome-product'].colors.length) {
-            botStatus.colorsIndex = 0;
-            setTimeout(() => sendMessage(portContentScript, { reload: true }), config['suprome-config'].restockReloadDelay);
+          botStatus[tabId].colorsIndex++;
+          if (botStatus[tabId].colorsIndex === botStatus[tabId].config.product.colors.length) {
+            botStatus[tabId].colorsIndex = 0;
+            setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), botStatus[tabId].config.extension.restockReloadDelay);
           } else {
-            sendMessage(portContentScript, { selectColor: true, color: config['suprome-product'].colors[botStatus.colorsIndex] });
+            sendMessage(botStatus[tabId].portContentScript, { selectColor: true, color: botStatus[tabId].config.product.colors[botStatus.colorsIndex] });
           }
         } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
-          botStatus.colorsIndex = 0;
-          setTimeout(() => sendMessage(portContentScript, { reload: true }), 500);
+          botStatus[tabId].colorsIndex = 0;
+          setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
         } else if (message.error === ERRORS.CC_DECLINED) {
-          botStatus.colorsIndex = 0;
-          sendMessage(portContentScript, { start: true, section: productSection });
+          botStatus[tabId].colorsIndex = 0;
+          sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
         } else if (message.loaded) {
-          sendMessage(portContentScript, botStatus.next);
-          botStatus.next = null;
+          sendMessage(botStatus[tabId].portContentScript, botStatus[tabId].next);
+          botStatus[tabId].next = null;
         } else if (message.done) {
-          stopBot();
+          stopBot(tabId);
         }
       });
+
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        botStatus[tabId].next = { findProduct: true, keyword: botStatus[tabId].config.product.keyword };
+      }, { urls: [`https://www.supremenewyork.com/shop/all/${botStatus[tabId].config.product.section}`] }, []);
+    
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        if (r.url.indexOf('?') != -1) {
+          sendMessage(botStatus[tabId].portContentScript, { selectSize: true, sizes: botStatus[tabId].config.product.sizes });
+        } else {
+          botStatus[tabId].next = { selectColor: true, color: botStatus[tabId].config.product.colors[0] };
+        }
+      }, { urls: [`https://www.supremenewyork.com/shop/${botStatus[tabId].config.product.section}/*/*`] }, []);
+    
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
+      }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
+    
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        botStatus[tabId].next = {
+          placeOrder: true,
+          billing: botStatus[tabId].config.billing,
+          cc: botStatus[tabId].config.cc,
+          checkoutDelay: botStatus[tabId].config.extension.checkoutDelay,
+        };
+      }, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
+    
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        botStatus[tabId].next = { start: true, section: botStatus[tabId].config.product.section };
+      }, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
+    
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
+      }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
+    
+      chrome.webRequest.onCompleted.addListener((r) => {
+        const { tabId } = r;
+        if (!botStatus[tabId].start) return;
+        stopBot(tabId);
+      }, { urls: ['*://www.paypal.com/**'] }, []);
     }
+
 
   });
-
-  chrome.webRequest.onCompleted.addListener((r) => {
-    if (!start) return;
-    botStatus.next = { findProduct: true, keyword: config['suprome-product'].keyword };
-  }, { urls: [`https://www.supremenewyork.com/shop/all/${productSection}`] }, []);
-
-  chrome.webRequest.onCompleted.addListener((r) => {
-    if (!start) return;
-    if (r.url.indexOf('?') != -1) {
-      sendMessage(portContentScript, { selectSize: true, sizes: config['suprome-product'].sizes });
-    } else {
-      botStatus.next = { selectColor: true, color: config['suprome-product'].colors[0] };
-    }
-  }, { urls: [`https://www.supremenewyork.com/shop/${productSection}/*/*`] }, []);
-
-  chrome.webRequest.onCompleted.addListener(() => {
-    if (!start) return;
-    sendMessage(portContentScript, { goToCheckout: true });
-  }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
-
-  chrome.webRequest.onCompleted.addListener(() => {
-    if (!start) return;
-    botStatus.next = {
-      placeOrder: true,
-      billing: config['suprome-billing'],
-      cc: config['suprome-cc'],
-      checkoutDelay: config['suprome-config'].checkoutDelay
-    };
-  }, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
-
-  chrome.webRequest.onCompleted.addListener(() => {
-    if (!start) return;
-    botStatus.next = { start: true, section: productSection };
-  }, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
-
-  chrome.webRequest.onCompleted.addListener(() => {
-    if (!start) return;
-    sendMessage(portContentScript, { checkoutResponse: true });
-  }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
-
-  chrome.webRequest.onCompleted.addListener(() => {
-    if (!start) return;
-    stopBot();
-  }, { urls: ['*://www.paypal.com/**'] }, []);
 
 });

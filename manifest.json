@@ -18,7 +18,6 @@
   "permissions": [
     "<all_urls>",
     "declarativeContent",
-    "webRequestBlocking",
     "webRequest",
     "storage",
     "tabs"
