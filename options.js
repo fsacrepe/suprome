@@ -1,141 +1,19 @@
-let config = [];
-const configBase = {
-  product: {
-    section: '',
-    keyword: '',
+let colorAndSizeBuffer = {
+  create: {
     sizes: [],
     colors: [],
-  },
-  billing: {
-    name: '',
-    email: '',
-    tel: '',
-    address: '',
-    address2: '',
-    address3: '',
-    city: '',
-    zip: '',
-    country: '',
-  },
-  cc: {
-    type: '',
-    cnb: '',
-    month: '',
-    year: '',
-    cvv: '',
-  },
-  extension: {
-    autoclear: false,
-    timeout: 3000,
-    checkoutDelay: 2000,
-    restockReloadDelay: 1000,
   }
 };
 
-function getFromStorage() {
-  chrome.storage.local.get('suprome', (storageConfig) => {
-    config = storageConfig.suprome;
-    changeProfile();
-  });
+function camelize(str) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function(word, index) {
+    return index === 0 ? word.toLowerCase() : word.toUpperCase();
+  }).replace(/\s+/g, '');
 }
 
-function saveInStorage() {
-  chrome.storage.local.set({ suprome: config }, (done) => {
-    $('#configSaved').css('visibility', 'visible');
-    setTimeout(() => {
-      $('#configSaved').css('visibility', 'hidden');
-    }, 3000)
-    console.log(`Config saved`);
-    //chrome.runtime.reload();
-  });
-}
-
-function clearStorage(e) {
-  e.preventDefault();
-  chrome.storage.sync.clear(() => {
-    getFromStorage();
-    console.log(`Config resetted`);
-  });
-}
-
-// Product
-
-function addSize(e) {
-  e.preventDefault();
-  const profileId = $('#profileID').val();
-  const value = $('#productSizes').val();
-  if (!value.length) return;
-  config[profileId].product.sizes.push(value);
-  getSizes();
-  $('#productSizes').val(null);
-}
-
-function popSize(e) {
-  e.preventDefault();
-  const profileId = $('#profileID').val();
-  config[profileId].product.sizes.pop();
-  getSizes();
-}
-
-function getSizes() {
-  const container = $('#configProductSizes');
-  const profileId = $('#profileID').val();
-  container.html(null);
-  config[profileId].product.sizes.forEach((color, index) => {
-    container.append(`<p class="badge">${index + 1}. ${color}</p>`)
-  })
-}
-
-function addColor(e) {
-  e.preventDefault();
-  const profileId = $('#profileID').val();
-  const value = $('#productColors').val();
-  if (!value.length) return;
-  config[profileId].product.colors.push(value);
-  $('#productColors').val(null);
-  getColors();
-  return false;
-}
-
-function popColor(e) {
-  e.preventDefault();
-  const profileId = $('#profileID').val();
-  config[profileId].product.colors.pop();
-  getColors();
-}
-
-function getColors() {
-  const profileId = $('#profileID').val();
-  const container = $('#configProductColors');
-  container.html(null);
-  config[profileId].product.colors.forEach((color, index) => {
-    container.append(`<p class="badge">${index + 1}. ${color}</>`);
-  });
-}
-
-function saveProductConfig() {
-  const profileId = $('#profileID').val();
-  config[profileId].product = {
-    section: $('#productSection').val(),
-    keyword: $('#productKeyword').val(),
-    colors: config[profileId].product.colors,
-    sizes: config[profileId].product.sizes,
-  };
-  saveInStorage();
-}
-
-function getProductConfig(profileId) {
-  $('#productSection').val(config[profileId].product.section);
-  $('#productKeyword').val(config[profileId].product.keyword);
-  getSizes();
-  getColors();
-}
-
-// Billing
-
-function saveBillingConfig() {
-  const profileId = $('#profileID').val();
-  config[profileId].billing = {
+const createProfile = () => {
+  const profileName = $('#profileName').val();
+  const billing = {
     name: $('#billingName').val(),
     email: $('#billingEmail').val(),
     tel: $('#billingTel').val(),
@@ -146,89 +24,226 @@ function saveBillingConfig() {
     zip: $('#billingZip').val(),
     country: $('#billingCountry').val(),
   };
-  saveInStorage();
-}
-
-function getBillingConfig(profileId) {
-  $('#billingName').val(config[profileId].billing.name);
-  $('#billingEmail').val(config[profileId].billing.email);
-  $('#billingTel').val(config[profileId].billing.tel);
-  $('#billingAddress').val(config[profileId].billing.address);
-  $('#billingAddress2').val(config[profileId].billing.address2);
-  $('#billingAddress3').val(config[profileId].billing.address3);
-  $('#billingCity').val(config[profileId].billing.city);
-  $('#billingZip').val(config[profileId].billing.zip);
-  $('#billingCountry').val(config[profileId].billing.country);
-}
-
-// CC
-
-function saveCreditConfig() {
-  const profileId = $('#profileID').val();
-  config[profileId].cc = {
+  const cc = {
     type: $('#ccType').val(),
     cnb: $('#ccCnb').val(),
     month: $('#ccMonth').val(),
     year: $('#ccYear').val(),
     cvv: $('#ccCvv').val(),
   };
-  saveInStorage();
-}
+  const newProfile = { [profileName]: { billing, cc } };
+  chrome.storage.local.get('suprome-profiles', (storage) => {
+    chrome.storage.local.set({ 'suprome-profiles': Object.assign({}, storage['suprome-profiles'], { ...newProfile }) }, done => {
+      initAll();
+    });
+  });
+};
 
-function getCreditConfig(profileId) {
-  $('#ccType').val(config[profileId].cc.type);
-  $('#ccCnb').val(config[profileId].cc.cnb);
-  $('#ccMonth').val(config[profileId].cc.month);
-  $('#ccYear').val(config[profileId].cc.year);
-  $('#ccCvv').val(config[profileId].cc.cvv);
-}
+const saveTab = (index = -1) => {
+  let selector = '#createBody';
+  let bufferProperty = index === -1 ? 'create' : `${index}`;
+  if (index !== -1) selector = `#tab-${index}`;
+  const selectedProfileName = $(`${selector} .profileSelection`).val();
+  const product = {
+    section: $(`${selector} #productSection`).val(),
+    keyword: $(`${selector} #productKeyword`).val(),
+    sizes: colorAndSizeBuffer[bufferProperty]['sizes'],
+    colors: colorAndSizeBuffer[bufferProperty]['colors'],
+  };
+  const extension = {
+    timeout: $(`${selector} #extensionTimeout`).val(),
+    checkoutDelay: $(`${selector} #extensionCheckoutDelay`).val(),
+    restockReloadDelay: $(`${selector} #extensionRestockReloadDelay`).val(),
+  };
+  chrome.storage.local.get('suprome-tabs', storage => {
+    if (index === -1) {
+      const tabs = [...(storage['suprome-tabs'] || []), { product, extension, profile: selectedProfileName }];
+      chrome.storage.local.set({ 'suprome-tabs': tabs }, initTabs);
+    } else {
+      storage['suprome-tabs'].splice(index, 1, { product, extension, profile: selectedProfileName })
+      chrome.storage.local.set({ 'suprome-tabs': storage['suprome-tabs'] }, initTabs);
+    }
+  });
+};
 
-// Extension config
-
-function getExtensionConfig(profileId) {
-  $('#extensionTimeout').val(config[profileId].extension.timeout);
-  $('#extensionAutoclearStorage').prop('checked', config[profileId].extension.autoclear);
-  $('#extensionCheckoutDelay').val(config[profileId].extension.checkoutDelay);
-  $('#extensionRestockReloadDelay').val(config[profileId].extension.restockReloadDelay);
-}
-
-function saveExtensionConfig() {
-  const profileId = $('#profileID').val();
-  config[profileId].extension = {
-    timeout: $('#extensionTimeout').val(),
-    checkoutDelay: $('#extensionCheckoutDelay').val(),
-    autoclear: $('#extensionAutoclearStorage').is(':checked') ? true : false,
-    restockReloadDelay: $('#extensionRestockReloadDelay').val(),
+const addToArray = (type, index = -1) => {
+  const selector = type === 'colors' ? '#productColors' : '#productSizes';
+  let property = 'create';
+  let value = $(`#createBody ${selector}`).val();
+  if (index !== -1) {
+    property = `${index}`;
+    value = $(`#tab-${index} ${selector}`).val();
   }
-  saveInStorage();
+  colorAndSizeBuffer[property][type].push(value);
+  setColorsAndSizes(index);
 }
 
-function saveAll(e) {
-  e.preventDefault();
-  saveProductConfig();
-  saveBillingConfig();
-  saveCreditConfig();
-  saveExtensionConfig();
+const popFromArray = (type, index = -1) => {
+  let property = 'create';
+  if (index !== -1) property = `${index}`;
+  console.log(colorAndSizeBuffer[property][type]);
+  colorAndSizeBuffer[property][type].pop();
+  setColorsAndSizes(index);
 }
 
-// Profile Management
-
-function changeProfile() {
-  const profileId = $('#profileID').val();
-  if (!config[profileId]) config[profileId] = Object.assign({}, configBase);
-  console.log(config);
-  getProductConfig(profileId);
-  getBillingConfig(profileId);
-  getCreditConfig(profileId);
-  getExtensionConfig(profileId);
+const removeProfile = () => {
+  chrome.storage.local.get('suprome-profiles', storage => {
+    const profiles = storage['suprome-profiles'];
+    const toRemove = $('a[id^="pill"].active').html();
+    delete profiles[toRemove];
+    chrome.storage.local.set({ 'suprome-profiles': profiles }, done => {
+      initAll();
+    });
+  })
 }
 
-$('#submitAll').click(saveAll);
-$('#resetAll').click(clearStorage);
-$('#addColor').click(addColor);
-$('#popColor').click(popColor);
-$('#addSize').click(addSize);
-$('#popSize').click(popSize);
-$('#profileID').change(changeProfile);
+const removeTab = (index) => {
+  chrome.storage.local.get('suprome-tabs', storage => {
+    storage['suprome-tabs'].splice(index, 1);
+    chrome.storage.local.set({ 'suprome-tabs': storage['suprome-tabs'] }, initTabs);
+  });
+}
 
-$(document).ready(getFromStorage);
+const setTabData = (selector, tab = null) => {
+  $(`${selector} .profileSelection`).val(!!tab ? tab.profile : '');
+  $(`${selector} #productSection`).val(!!tab ? tab.product.section : '');
+  $(`${selector} #productKeyword`).val(!!tab ? tab.product.keyword : '');
+  $(`${selector} #extensionTimeout`).val(!!tab ? tab.extension.timeout : '');
+  $(`${selector} #extensionCheckoutDelay`).val(!!tab ? tab.extension.checkoutDelay : '');
+  $(`${selector} #extensionRestockReloadDelay`).val(!!tab ? tab.extension.restockReloadDelay : '');
+  if (!!tab) {
+    const btnContainer = $(`${selector} #createTabBtn`).parent();
+    const tabIndex = $(selector).attr('data-tab-index');
+    btnContainer.html(null);
+    btnContainer.append(`<button id="removeTabBtn" class="btn btn-danger" type="button">Remove</button>`);
+    btnContainer.append(`<button id="editTabBtn" class="btn btn-primary" type="button" style="margin-left: 5px;">Save</button>`);
+    setColorsAndSizes(tabIndex);
+    $(`${selector} #editTabBtn`).click(() => saveTab(tabIndex));
+    $(`${selector} #removeTabBtn`).click(() => removeTab(tabIndex));
+    $(`${selector} #addSize`).click(() => addToArray('sizes', tabIndex));
+    $(`${selector} #popSize`).click(() => popFromArray('sizes', tabIndex));
+    $(`${selector} #addColor`).click(() => addToArray('colors', tabIndex));
+    $(`${selector} #popColor`).click(() => popFromArray('colors', tabIndex));
+  }
+}
+
+const setColorsAndSizes = (index = -1) => {
+  let selector = '#createBody';
+  let property = 'create';
+  if (index !== -1) {
+    selector = `#tab-${index}`;
+    property = index;
+  }
+  $(`${selector} #configProductColors`).html(null);
+  $(`${selector} #configProductSizes`).html(null);
+  for (const dataType in colorAndSizeBuffer[property]) {
+    colorAndSizeBuffer[property][dataType].forEach(val => {
+      if (dataType === 'colors') $(`${selector} #configProductColors`).append(`<span class="badge badge-dark">${val}</span>`);
+      if (dataType === 'sizes') $(`${selector} #configProductSizes`).append(`<span class="badge badge-dark">${val}</span>`);
+    });
+  }
+}
+
+const setProfileData = (profileName = '', profile = null) => {
+  $(`#profileName`).val(profileName);
+  $(`#billingName`).val(!!profile ? profile.billing.name : '');
+  $(`#billingEmail`).val(!!profile ? profile.billing.email : '');
+  $(`#billingTel`).val(!!profile ? profile.billing.tel : '');
+  $(`#billingAddress`).val(!!profile ? profile.billing.address : '');
+  $(`#billingAddress2`).val(!!profile ? profile.billing.address2 : '');
+  $(`#billingAddress3`).val(!!profile ? profile.billing.address3 : '');
+  $(`#billingCity`).val(!!profile ? profile.billing.city : '');
+  $(`#billingZip`).val(!!profile ? profile.billing.zip : '')
+  $(`#billingCountry`).val(!!profile ? profile.billing.country : '');
+  $(`#ccType`).val(!!profile ? profile.cc.type : '');
+  $(`#ccCnb`).val(!!profile ? profile.cc.cnb : '');
+  $(`#ccMonth`).val(!!profile ? profile.cc.month : '');
+  $(`#ccYear`).val(!!profile ? profile.cc.year : '');
+  $(`#ccCvv`).val(!!profile ? profile.cc.cvv : '');
+  if (!!profile) {
+    $(`#submitProfileBtn`).html('Edit Profile');
+    $(`#removeProfileBtn`).show();
+  } else {
+    $(`#submitProfileBtn`).html('Create Profile');
+    $(`#removeProfileBtn`).hide();
+  }
+}
+
+const initProfiles = () => {
+  chrome.storage.local.get('suprome-profiles', storage => {
+    const pillsContainer = $('#profilesPills');
+    pillsContainer.html(null);
+    for (const profileName in storage['suprome-profiles']) {
+      const p = storage['suprome-profiles'][profileName];
+      const camelProfileName = camelize(profileName);
+      pillsContainer.prepend(`<a class="nav-link" id="pill${camelProfileName}" data-toggle="pill" href="#profile${camelProfileName}" role="tab" aria-selected="false">${profileName}</a>`)
+      $(`#pill${camelProfileName}`).click(() => setProfileData(profileName, p));
+    }
+    pillsContainer.append('<a class="nav-link active" id="pillCreateProfile" data-toggle="pill" href="#profileForm" role="tab" aria-controls="create-profile" aria-selected="true" style="margin-top: 20%;">+ New Profile</a>');
+    $('#pillCreateProfile').click(() => setProfileData());
+  });
+}
+
+const initProfileSelect = () => {
+  chrome.storage.local.get('suprome-profiles', storage => {
+    for (const profileName in storage['suprome-profiles']) {
+      $('.profileSelection').append(`<option value="${profileName}">${profileName}</option>`);
+      console.log(profileName);
+    }
+  });
+}
+
+const initTabs = () => {
+  createTabSizesBuffer = [];
+  createTabColorsBuffer = [];
+  setTabData('#accordionCreateTask');
+  chrome.storage.local.get('suprome-tabs', storage => {
+    console.log(storage);
+    $('#accordionContainer').html(null);
+    if (!storage['suprome-tabs']) return;
+    storage['suprome-tabs'].forEach((tab, index) => {
+      const { colors = [], sizes = [] } = tab.product
+      colorAndSizeBuffer[index] = { sizes, colors };
+      const original = $('#accordionCreateTask > .card');
+      original.clone().appendTo('#accordionContainer');
+      $('#accordionContainer > .card').last().attr('id', `tab-${index}`);
+      $(`#accordionContainer > #tab-${index}`).attr('data-tab-index', `${index}`);
+      $(`#accordionContainer #tab-${index} button[data-toggle="collapse"]`).attr('data-target', `#tabContent-${index}`);
+      $(`#accordionContainer > #tab-${index} > .collapse`).attr('id', `tabContent-${index}`);
+      $(`#accordionContainer > #tab-${index} > .collapse`).attr('class', `collapse hide`);
+      $(`#accordionContainer > #tab-${index} > .collapse`).attr('data-parent', '#accordionContainer');
+      $(`#tab-${index} #tab-title`).html(`Tab ${index} - [${tab.product.section}] ${tab.product.keyword}`);
+      setTabData(`#tab-${index}`, tab);
+    });
+  });
+}
+
+const compileConfig = () => {
+  chrome.storage.local.get(['suprome-tabs', 'suprome-profiles'], storage => {
+    const compiled = [];
+    storage['suprome-tabs'].forEach(tab => {
+      const { product, extension } = tab;
+      const { billing, cc } = storage['suprome-profiles'][tab.profile];
+      compiled.push({ product, extension, billing, cc });
+    });
+    chrome.storage.local.set({ 'suprome': compiled }, () => {chrome.runtime.reload();});
+  });
+}
+
+const initAll = () => {
+  chrome.storage.local.get('suprome', storage => console.log(storage));
+  initProfileSelect();
+  initProfiles();
+  initTabs();
+};
+
+$('#pillCreateProfile').click(setProfileData);
+$('#submitProfileBtn').click(createProfile);
+$('#removeProfileBtn').click(removeProfile);
+$('#createTabBtn').click(() => saveTab());
+$(`#createBody #addSize`).click(() => addToArray('sizes'));
+$(`#createBody #popSize`).click(() => popFromArray('sizes'));
+$(`#createBody #addColor`).click(() => addToArray('colors'));
+$(`#createBody #popColor`).click(() => popFromArray('colors'));
+$('#compileConfigBtn').click(compileConfig);
+$(document).ready(initAll);
