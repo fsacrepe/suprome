@@ -66,7 +66,7 @@ chrome.storage.local.get('suprome', (_config) => {
             botStatus[tabId].colorsIndex = 0;
             setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), botStatus[tabId].config.extension.restockReloadDelay);
           } else {
-            sendMessage(botStatus[tabId].portContentScript, { selectColor: true, color: botStatus[tabId].config.product.colors[botStatus.colorsIndex] });
+            sendMessage(botStatus[tabId].portContentScript, { selectColor: true, color: botStatus[tabId].config.product.colors[botStatus[tabId].colorsIndex] });
           }
         } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
           botStatus[tabId].colorsIndex = 0;
