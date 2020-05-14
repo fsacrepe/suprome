@@ -218,6 +218,28 @@ const initTabs = () => {
   });
 }
 
+const initRestockCards = (logs) => {
+  $('#restockedList').html(null);
+  logs.forEach((restocked) => {
+    $('#restockedList').append(`
+    <a href="${restocked.productUrl}" target="_blank">
+      <div class="card mb-3">
+        <div class="row no-gutters">
+          <div class="col-md-2" style="padding: 15px;" height="128px"><img src="${restocked.productImage}" height="128px"/></div>
+          <div class="col-md-10">
+            <div class="card-body">
+              <h5 class="card-title">${restocked.productName}</h5>
+              <p class="card-text">${restocked.productColor}</p>
+              <p class="card-text"><small class="text-muted">${restocked.date}</small></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+    `);
+  });
+}
+
 const compileConfig = () => {
   chrome.storage.local.get(['suprome-tabs', 'suprome-profiles'], storage => {
     const compiled = [];
@@ -235,6 +257,16 @@ const initAll = () => {
   initProfileSelect();
   initProfiles();
   initTabs();
+  chrome.storage.local.get(['suprome-restock', 'suprome-restock-logs'], storage => {
+    initRestockCards(storage['suprome-restock-logs']);
+    setInterval(() => {
+      if ($('#restock[class*="active"]').length) {
+        chrome.storage.local.get('suprome-restock-logs', config => {
+          initRestockCards(config['suprome-restock-logs']);
+        });
+      }
+    }, storage['suprome-restock'].restockMonitorDelay);
+  });
 };
 
 $('#pillCreateProfile').click(setProfileData);

@@ -23,13 +23,13 @@
         display: flex;
         flex-direction: row;
       }
-      #startBtn {
+      [id^=start] {
         background-color: rgb(231, 43, 0);
         border-radius: 10px;
         color: white;
         margin-right: 5px;
       }
-      #stopBtn {
+      [id^=stop] {
         background-color: black;
         border-radius: 10px;
         color: white;
@@ -47,6 +47,12 @@
       <button id="startBtn">Start</button>
       <button id="stopBtn">Stop</button>
       <button id="goToConfig">Configure</button>
+    </div>
+    <div id="button-container">
+      <button id="startRestockBtn">Restock ON</button>
+    </div>
+    <div id="button-container">
+      <button id="stopRestockBtn">Restock OFF</button>
     </div>
     <script src="jquery.min.js"></script>
     <script src="popup.js"></script>
