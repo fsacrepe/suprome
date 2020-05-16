@@ -51,9 +51,10 @@ const saveTab = (index = -1) => {
     colors: colorAndSizeBuffer[bufferProperty]['colors'],
   };
   const extension = {
-    timeout: $(`${selector} #extensionTimeout`).val(),
-    checkoutDelay: $(`${selector} #extensionCheckoutDelay`).val(),
-    restockReloadDelay: $(`${selector} #extensionRestockReloadDelay`).val(),
+    timeout: Number($(`${selector} #extensionTimeout`).val()),
+    checkoutDelay: Number($(`${selector} #extensionCheckoutDelay`).val()),
+    checkoutDelayIncrease: Number($(`${selector} #extensionCheckoutDelayIncrease`).val()),
+    restockReloadDelay: Number($(`${selector} #extensionRestockReloadDelay`).val()),
   };
   chrome.storage.local.get('suprome-tabs', storage => {
     if (index === -1) {
@@ -110,6 +111,7 @@ const setTabData = (selector, tab = null) => {
   $(`${selector} #productKeyword`).val(!!tab ? tab.product.keyword : '');
   $(`${selector} #extensionTimeout`).val(!!tab ? tab.extension.timeout : '');
   $(`${selector} #extensionCheckoutDelay`).val(!!tab ? tab.extension.checkoutDelay : '');
+  $(`${selector} #extensionCheckoutDelayIncrease`).val(!!tab ? tab.extension.checkoutDelayIncrease : '');
   $(`${selector} #extensionRestockReloadDelay`).val(!!tab ? tab.extension.restockReloadDelay : '');
   if (!!tab) {
     const btnContainer = $(`${selector} #createTabBtn`).parent();

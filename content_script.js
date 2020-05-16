@@ -52,6 +52,7 @@ function manageCheckoutResponse() {
 }
 
 function fillFormAndOrder(billing, cc, checkoutDelay) {
+  console.log('CHECKOUT DELAY', checkoutDelay);
   // Once document is fully loaded, create timeout to click on "place order" button
   $(document).ready(() => {
     setTimeout(() => {

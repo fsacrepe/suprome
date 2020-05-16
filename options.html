@@ -107,15 +107,23 @@
                     <h5>Extension Config</h5>
                     <div class="form-group">
                       <label for="extensionTimeout">Timeout (seconds)</label>
-                      <input class="form-control" id="extensionTimeout" class="pure-input-1" type="number" />
+                      <input class="form-control" id="extensionTimeout" type="number" />
                     </div>
                     <div class="form-group">
-                      <label for="extensionCheckoutDelay">Checkout delay (ms)</label>
-                      <input class="form-control" id="extensionCheckoutDelay" class="pure-input-1" type="number" />
+                      <div class="form-row">
+                        <div class="col">
+                          <label for="extensionCheckoutDelay">Checkout delay (ms)</label>
+                          <input class="form-control" id="extensionCheckoutDelay" type="number" />
+                        </div>
+                        <div class="col">
+                          <label for="extensionCheckoutDelayIncrease">Auto increase (ms)</label>
+                          <input class="form-control" id="extensionCheckoutDelayIncrease" type="number" />
+                        </div>
+                      </div>
                     </div>
                     <div class="form-group">
                       <label for="extensionRestockReloadDelay">Restock Reload delay (ms)</label>
-                      <input class="form-control" id="extensionRestockReloadDelay" class="pure-input-1" type="number" />
+                      <input class="form-control" id="extensionRestockReloadDelay" type="number" />
                     </div>
                   </div>
                 </div>
