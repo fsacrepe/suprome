@@ -1,4 +1,7 @@
-let started = true;
+let log = [];
+let lastState = {};
+const promises = [];
+let monitorInterval;
 
 function createNotification(name, color, image) {
   chrome.notifications.create(null, {
@@ -9,22 +12,16 @@ function createNotification(name, color, image) {
   }, () => {});
 }
 
-chrome.runtime.onConnect.addListener((_port) => {
-  if (_port.name === 'suprome-popup') {
-    _port.onMessage.addListener((msg) => {
-      if (msg.start || msg.stopRestock) started = false;
-      else if (msg.stop || msg.startRestock) started = true;
-    })
-  }
-});
+function setRestockMonitorStatus(enabled) {
+  chrome.storage.local.get('suprome-restock', config => {
+    chrome.storage.local.set({ 'suprome-restock': Object.assign({}, config['suprome-restock'], { enabled }) }, () => {});
+  });
+}
 
-chrome.storage.local.get('suprome-restock', (_config) => {
-  let { restockMonitorDelay = 3000, lastState = {}, log = [] } = _config['suprome-restock'] || {};
-  const promises = [];
-
-  setInterval(() => {
-    if (!started) return;
+function createMonitorInterval(interval) {
+  monitorInterval = setInterval(() => {
     chrome.storage.local.get('suprome-restock', updatedConfig => {
+      if (!updatedConfig['suprome-restock'].enabled) return;
       const newState = {};
       log = updatedConfig['suprome-restock'].log;
       lastState = updatedConfig['suprome-restock'].lastState;
@@ -35,11 +32,30 @@ chrome.storage.local.get('suprome-restock', (_config) => {
           if (Object.keys(lastState).length && !lastState[href]) promises.push(href);
           newState[href] = {};
         });
-        chrome.storage.local.set({ 'suprome-restock': {restockMonitorDelay, lastState: newState}}, _ => {});
+        chrome.storage.local.set({ 'suprome-restock': Object.assign({}, updatedConfig['suprome-restock'], { lastState: newState}) }, _ => {});
       });
     });
-  }, restockMonitorDelay);
+  }, interval);
+}
 
+chrome.runtime.onConnect.addListener((_port) => {
+  if (_port.name === 'suprome-popup') {
+    _port.onMessage.addListener((msg) => {
+      if (msg.start) setRestockMonitorStatus(false);
+      else if (msg.stop) setRestockMonitorStatus(true);
+    });
+  }
+});
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes['suprome-restock']) {
+    clearInterval(monitorInterval);
+    createMonitorInterval(changes['suprome-restock'].newValue.restockMonitorDelay);
+  }
+});
+
+chrome.storage.local.get('suprome-restock', (_config) => {
+  createMonitorInterval(_config['suprome-restock'].restockMonitorDelay);
   setInterval(() => {
     const now = (new Date).toString();
     if (promises.length) {

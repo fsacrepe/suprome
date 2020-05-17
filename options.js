@@ -108,7 +108,6 @@ const addToArray = (type, index = -1) => {
 const popFromArray = (type, index = -1) => {
   let property = 'create';
   if (index !== -1) property = `${index}`;
-  console.log(colorAndSizeBuffer[property][type]);
   colorAndSizeBuffer[property][type].pop();
   setColorsAndSizes(index);
 }
@@ -216,7 +215,6 @@ const initProfileSelect = () => {
   chrome.storage.local.get('suprome-profiles', storage => {
     for (const profileName in storage['suprome-profiles']) {
       $('.profileSelection').append(`<option value="${profileName}">${profileName}</option>`);
-      console.log(profileName);
     }
   });
 }
@@ -226,7 +224,6 @@ const initTabs = () => {
   createTabColorsBuffer = [];
   setTabData('#accordionCreateTask');
   chrome.storage.local.get('suprome-tabs', storage => {
-    console.log(storage);
     $('#accordionContainer').html(null);
     if (!storage['suprome-tabs']) return;
     storage['suprome-tabs'].forEach((tab, index) => {
@@ -243,6 +240,32 @@ const initTabs = () => {
       $(`#tab-${index} #tab-title`).html(`Tab ${index} - [${tab.product.section}] ${tab.product.keyword}`);
       setTabData(`#tab-${index}`, tab);
     });
+  });
+}
+
+const clearMonitorHistory = () => {
+  chrome.storage.local.set({ 'suprome-restock-logs': [] }, () => {
+    initRestockCards([]);
+  });
+}
+
+const changeMonitorState = () => {
+  chrome.storage.local.get('suprome-restock', config => {
+    chrome.storage.local.set({ 'suprome-restock': Object.assign({}, config['suprome-restock'], { enabled: !config['suprome-restock'].enabled })}, () => {});
+  });
+}
+
+const setMonitorConfig = () => {
+  const restockMonitorDelay = Number($('#restockMonitorDelay').val());
+  chrome.storage.local.get('suprome-restock', config => {
+    chrome.storage.local.set({ 'suprome-restock': Object.assign({}, config['suprome-restock'], { restockMonitorDelay })}, () => {});
+  });
+}
+
+const initMonitorConfig = () => {
+  chrome.storage.local.get('suprome-restock', config => {
+    $('#restockMonitorToggle').prop('checked', config['suprome-restock'].enabled);
+    $('#restockMonitorDelay').val(config['suprome-restock'].restockMonitorDelay);
   });
 }
 
@@ -321,11 +344,11 @@ const compileConfig = () => {
 }
 
 const initAll = () => {
-  chrome.storage.local.get('suprome', storage => console.log(storage));
   initProfileSelect();
   initProfiles();
   initTabs();
   initProxyList();
+  initMonitorConfig();
   chrome.storage.local.get(['suprome-restock', 'suprome-restock-logs'], storage => {
     initRestockCards(storage['suprome-restock-logs']);
     setInterval(() => {
@@ -349,4 +372,7 @@ $(`#createBody #popColor`).click(() => popFromArray('colors'));
 $('#compileConfigBtn').click(compileConfig);
 $('#proxyListAddBtn').click(addProxy);
 $('#proxyListConnectBtn').click(() => {connectToProxy($('#newProxy').val())});
+$('#clearMonitorHistoryBtn').click(clearMonitorHistory);
+$('#restockMonitorToggle').click(changeMonitorState);
+$('#saveRestockMonitorBtn').click(setMonitorConfig);
 $(document).ready(initAll);

@@ -295,6 +295,29 @@
         </div>
       </div>
       <div class="tab-pane fade" id="restock" role="tabpanel" aria-labelledby="restock-tab" style="margin-top: 2%; padding: 0 8px;">
+        <div class="card mb-4">
+          <div class="card-body">
+            <form class="form-inline">
+              <div class="form-group">
+                <h5 class="card-title mr-3">Restock monitor</h5>
+                <div class="custom-control custom-switch mb-2">
+                  <input type="checkbox" class="custom-control-input" id="restockMonitorToggle" />
+                  <label class="custom-control-label" for="restockMonitorToggle"></label>
+                </div>
+              </div>
+            </form>
+            <form>
+              <div class="form-group">
+                <label for="restockMonitorDelay">Monitoring interval (ms)</label>
+                <input id="restockMonitorDelay" type="number" class="form-control" />
+              </div>
+              <div style="text-align:right;">
+                <button id="clearMonitorHistoryBtn" type="button" class="btn btn-info">Clear monitor history</button>
+                <button id="saveRestockMonitorBtn" type="button" class="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
         <div id="restockedList"></div>
       </div>
       <div class="tab-pane fade" id="proxy" role="tabpanel" aria-labelledby="proxy-tab" style="padding: 2% 2%;">

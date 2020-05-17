@@ -2,10 +2,10 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes['suprome-proxy']) setProxyConfig();
 });
 
-chrome.proxy.onProxyError.addListener((err) => {
-  console.log('proxy error', err);
+chrome.proxy.onProxyError.addListener(_ => {
   chrome.notifications.create(null, {
     type: 'basic',
+    iconUrl: chrome.runtime.getURL('icon.png'),
     title: 'Suprome Proxy Error',
     message: 'One of your proxies is failing to make requests'
   }, () => {});
@@ -25,9 +25,7 @@ function setProxyConfig() {
         mandatory: true,
       }
     };
-    chrome.proxy.settings.set({value: proxyConfig, scope: 'regular'}, () => {
-      chrome.proxy.settings.get({}, (a) => console.log('NEW PROXY CONFIG', a));
-    });
+    chrome.proxy.settings.set({value: proxyConfig, scope: 'regular'}, () => {});
   });
 }
 
