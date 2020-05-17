@@ -11,6 +11,32 @@ function camelize(str) {
   }).replace(/\s+/g, '');
 }
 
+const connectToProxy = (proxyUrl) => {
+  const proxyConfig = {
+    mode: 'pac_script',
+    pacScript: {
+      data: "function FindProxyForURL(url, host) {\n" +
+      "  if (host == 'whatismyipaddress.com')\n" +
+      "    return 'PROXY " + proxyUrl + "';\n" +
+      "  return 'DIRECT';\n" +
+      "}",
+      mandatory: true,
+    }
+  };
+  chrome.proxy.settings.get({}, (oldConfig) => {
+    chrome.proxy.settings.set({value: proxyConfig, scope: 'regular'}, () => {
+      chrome.tabs.create({
+        url: 'https://whatismyipaddress.com',
+        active: true,
+      }, (tab) => {
+        chrome.tabs.onRemoved.addListener((tabId) => {
+          if (tabId === tab.id) chrome.proxy.settings.set({ value: oldConfig.value, scope: 'regular' }, () => {});
+        });
+      });
+    });
+  })
+}
+
 const createProfile = () => {
   const profileName = $('#profileName').val();
   const billing = {
@@ -242,6 +268,46 @@ const initRestockCards = (logs) => {
   });
 }
 
+const addProxy = () => {
+  const newProxyUrl = $('#newProxy').val();
+  $('#newProxy').val(null);
+  chrome.storage.local.get('suprome-proxy', config => {
+    chrome.storage.local.set({ 'suprome-proxy' : [...config['suprome-proxy'] || [], newProxyUrl]}, () => {
+      initProxyList();
+    });
+  });
+}
+
+const removeProxy = (index) => {
+  chrome.storage.local.get('suprome-proxy', config => {
+    config['suprome-proxy'].splice(index, 1);
+    chrome.storage.local.set(config, () => {
+      initProxyList();
+    });
+  });
+}
+
+const initProxyList = () => {
+  chrome.storage.local.get('suprome-proxy', config => {
+    $('[id^="proxyListElement-"]').remove();
+    config['suprome-proxy'].forEach((proxy, index) => {
+      $('#proxyList').prepend(`
+      <li id="proxyListElement-${index}" class="list-group-item">
+        <form class="form-inline mb-0">
+          <div class="form-group mr-4">
+            <input type="text" readonly class="form-control" value="${proxy}" />
+          </div>
+          <button id="connectBtn" type="button" class="btn btn-primary mr-2">Connect</button>
+          <button id="removeBtn" type="button" class="btn btn-danger">Remove</button>
+        </form>
+      </li>
+      `);
+      $(`#proxyListElement-${index} #connectBtn`).click(() => {connectToProxy(config['suprome-proxy'][index]);});
+      $(`#proxyListElement-${index} #removeBtn`).click(() => {removeProxy(index)});
+    });
+  });
+}
+
 const compileConfig = () => {
   chrome.storage.local.get(['suprome-tabs', 'suprome-profiles'], storage => {
     const compiled = [];
@@ -259,6 +325,7 @@ const initAll = () => {
   initProfileSelect();
   initProfiles();
   initTabs();
+  initProxyList();
   chrome.storage.local.get(['suprome-restock', 'suprome-restock-logs'], storage => {
     initRestockCards(storage['suprome-restock-logs']);
     setInterval(() => {
@@ -280,4 +347,6 @@ $(`#createBody #popSize`).click(() => popFromArray('sizes'));
 $(`#createBody #addColor`).click(() => addToArray('colors'));
 $(`#createBody #popColor`).click(() => popFromArray('colors'));
 $('#compileConfigBtn').click(compileConfig);
+$('#proxyListAddBtn').click(addProxy);
+$('#proxyListConnectBtn').click(() => {connectToProxy($('#newProxy').val())});
 $(document).ready(initAll);

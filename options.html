@@ -25,6 +25,12 @@
           <li class="nav-item">
             <a class="nav-link" href="#restock" data-toggle="tab" role="tab" aria-controls="restock" aria-selected="false">Restock</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#proxy" data-toggle="tab" role="tab" aria-controls="proxy" aria-selected="false">
+              Proxy
+              <span class="badge badge-warning">Beta</span>
+            </a>
+          </li>
         </ul>
         <a class="nav-link" target="_blank" href="https://chrome.google.com/webstore/detail/sessionbox-free-multi-log/megbklhjamjbcafknkgmokldgolkdfig?hl=fr">
           Install SessionBox
@@ -290,6 +296,28 @@
       </div>
       <div class="tab-pane fade" id="restock" role="tabpanel" aria-labelledby="restock-tab" style="margin-top: 2%; padding: 0 8px;">
         <div id="restockedList"></div>
+      </div>
+      <div class="tab-pane fade" id="proxy" role="tabpanel" aria-labelledby="proxy-tab" style="padding: 2% 2%;">
+        <div class="alert alert-info" role="alert">
+          Proxies are randomly used on each supremenewyork.com call. This also takes your personnal non proxified connection.
+        </div>
+        <div class="alert alert-warning" role="alert">
+          Don't forget to connect to all your proxies before using it in drop!
+        </div>
+        <h1>Proxy list</h1>
+        <div class="mt-4">
+          <ul id="proxyList" class="list-group">
+            <li id="proxyListAdd" class="list-group-item">
+              <form class="form-inline mb-0">
+                <div class="form-group mb-2 mr-4">
+                  <input type="text" class="form-control" id="newProxy" placeholder="Proxy address" />
+                </div>
+                <button id="proxyListConnectBtn" type="button" class="btn btn-primary mb-2 mr-2">Connect</button>
+                <button id="proxyListAddBtn" type="button" class="btn btn-success mb-2">Add</button>
+              </form>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </body>

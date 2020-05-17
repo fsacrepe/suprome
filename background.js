@@ -108,7 +108,7 @@ chrome.storage.local.get('suprome', (_config) => {
             botStatus[tabId].start = true;
             botStatus[tabId].colorsIndex = 0;
             sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
-            setTimeout(() => stopBot(tabId), botStatus[tabId].config.extension.timeout * 1000);
+            setTimeout(() => stopBot(tabId), botStatus[tabId].config.extension.timeout * 1000)
           }
         } else if (message.stop) {
           for (const tabId in botStatus) stopBot(tabId);
