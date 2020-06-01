@@ -1,16 +1,6 @@
 const port = chrome.runtime.connect({ name: 'suprome-content_script' });
 port.postMessage({ sender: 'content_script', loaded: true });
 
-function waitForEl(selector, callback) {
-  if ($(selector).length) {
-    callback();
-  } else {
-    setTimeout(function() {
-      waitForEl(selector, callback);
-    }, 100);
-  }
-};
-
 function createMessageBody(content) {
   return {
     sender: 'content_script',
@@ -18,125 +8,97 @@ function createMessageBody(content) {
   };
 }
 
-function isCardDeclined() {
-  return $('.failed').length;
-}
-
-function isSuccess() {
-  return $('.tab-confirmation.selected').length;
-}
-
-function isAllSoldOut() {
-  return !$('a[data-sold-out="false"]').length;
-}
-
-function goToProductSection(config) {
-  const section = config['suprome-product'].section;
+function goToProductSection(section) {
   location.href = `https://www.supremenewyork.com/shop/all/${section}`;
 }
 
-function selectProductFromAll(config) {
-  const article = $(`.inner-article:contains(${config['suprome-product'].keyword})`).first().find('a');
-  if (!article.length) return port.postMessage(createMessageBody({ error: 'NOT_FOUND' }));
+function selectProductFromAll(keyword) {
+  const article = $(`.inner-article:contains(${keyword})`).first().find('a');
+  if (!article.length) return port.postMessage(createMessageBody({ error: 'PRODUCT_NOT_FOUND' }));
   location.href = article[0].href;
 }
 
-function selectColorAndSize(config) {
-  // Create event listener on "Buy" form
-  $('#cctrl').on('DOMSubtreeModified', function () {
+function selectColor(color) {
+  const foundColor = $(`a[data-style-name="${color}"][data-sold-out="false"]`);
+  if (!foundColor.length) return port.postMessage(createMessageBody({ error: 'COLOR_SOLD_OUT' }));
+  foundColor[0].click();
+}
 
-    if (!config['suprome-product'].sizes.length) {
-      waitForEl('input[name="commit"]', () => {
-        $('input[name="commit"]').click();
-        $('#cctrl').unbind();
-      });
-    } else {
-      // If size exists in size select, set value and click on commit
-      config['suprome-product'].sizes.every(size => {
-        const selectedSize = $(`option:contains(${size})`).first();
-        if (selectedSize.length) {
-          $('#size').val(selectedSize[0].value);
-          $('input[name="commit"]').click();
-          $('#cctrl').unbind(); // <-- Unbind eventlistener to prevent script from running even after bot stopped
-          return false; // <-- used to stop loop, Array.every() stops iterating on return false
-        }
-        return true;
-      });
+function selectSize(sizes) {
+  const notFound = sizes.every(size => {
+    const foundSize = $(`option:contains(${size})`);
+    if (foundSize.length) {
+      $('#size').val(foundSize[0].value);
+      return false;
     }
-
-  });
-
-  // For each color, click on color product if not sold out
-  config['suprome-product'].colors.every((color) => {
-    const coloredProduct = $('ul[class^="styles"] > li').find(`a[data-style-name="${color}"][data-sold-out="false"]`).first();
-    if (coloredProduct.length) coloredProduct[0].firstElementChild.click();
     return true;
   });
+  const commit = $('input[name="commit"]');
+  if ((notFound && sizes.length) || !commit.length)
+    return port.postMessage(createMessageBody({ error: 'COLOR_SOLD_OUT' }));
+  else
+    commit[0].click();
 }
 
 function goToCheckout() {
   location.href = "https://www.supremenewyork.com/checkout/";
 }
 
-function fillFormAndOrder(config) {
+function manageCheckoutResponse() {
+  if ($('.failed').length)
+    return port.postMessage(createMessageBody({ error: 'CC_DECLINED' }));
+  else
+    return port.postMessage(createMessageBody({ done: true }));
+}
+
+function fillFormAndOrder(billing, cc, checkoutDelay) {
   // Once document is fully loaded, create timeout to click on "place order" button
   $(document).ready(() => {
     setTimeout(() => {
       $('input.button.checkout').click();
-      port.postMessage(createMessageBody({ checkout: true }));
       $(document).unbind();
-    }, config['suprome-config'].checkoutDelay);
+    }, checkoutDelay);
   });
 
-  $('input[name="order[billing_name]"]').val(config['suprome-billing'].name);
-  $('input[name="order[email]"]').val(config['suprome-billing'].email);
-  $('input[name="order[tel]"]').val(config['suprome-billing'].tel);
-  $('input[name="order[billing_address]"]').val(config['suprome-billing'].address);
-  $('input[name="order[billing_address_2]"]').val(config['suprome-billing'].address2);
-  $('input[name="order[billing_address_3]"]').val(config['suprome-billing'].address3);
-  $('input[name="order[billing_city]"]').val(config['suprome-billing'].city);
-  $('input[name="order[billing_zip]"]').val(config['suprome-billing'].zip);
-  $('select[name="order[billing_country]"]').val(config['suprome-billing'].country);
-  $('select[name="credit_card[type]"]').val(config['suprome-cc'].type);
-  if (config['suprome-cc'].type !== 'paypal') {
-    $('input[name="credit_card[cnb]"]').val(config['suprome-cc'].cnb);
-    $('select[name="credit_card[month]"]').val(config['suprome-cc'].month);
-    $('select[name="credit_card[year]"]').val(config['suprome-cc'].year);
-    $('input[name="credit_card[ovv]"]').val(config['suprome-cc'].cvv);
+  $('input[name="order[billing_name]"]').val(billing.name);
+  $('input[name="order[email]"]').val(billing.email);
+  $('input[name="order[tel]"]').val(billing.tel);
+  $('input[name="order[billing_address]"]').val(billing.address);
+  $('input[name="order[billing_address_2]"]').val(billing.address2);
+  $('input[name="order[billing_address_3]"]').val(billing.address3);
+  $('input[name="order[billing_city]"]').val(billing.city);
+  $('input[name="order[billing_zip]"]').val(billing.zip);
+  $('select[name="order[billing_country]"]').val(billing.country);
+  $('select[name="credit_card[type]"]').val(cc.type);
+  if (cc.type !== 'paypal') {
+    $('input[name="credit_card[cnb]"]').val(cc.cnb);
+    $('select[name="credit_card[month]"]').val(cc.month);
+    $('select[name="credit_card[year]"]').val(cc.year);
+    $('input[name="credit_card[ovv]"]').val(cc.cvv);
   }
-  $('input[name="order[terms]"]').each((id, el) => el.click());
+  $('label.has-checkbox.terms').click()
 }
 
 // Calls callback on message received
 port.onMessage.addListener((message) => {
-  // Get bot config from storage
-  chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
-    // If message is coming from background
-    if (message.sender === 'background') {
-      if (message.start) {
-        goToProductSection(config);
-      } else if (message.page === 'product-section') {
-        selectProductFromAll(config);
-      } else if (message.page === 'product-selected') {
-        if (isAllSoldOut()) {
-          port.postMessage(createMessageBody({ error: 'NEED_RESTOCK'}));
-        } else {
-          selectColorAndSize(config);
-          $('#cart').on('DOMSubtreeModified', () => {
-            goToCheckout();
-            $('#cart').unbind();
-          });
-        }
-      } else if (message.page === 'checkout') {
-        fillFormAndOrder(config);
-      } else if (message.page === 'checkout-oos') {
-        window.history.back();
-      } else if (message.page === 'checkout-response') {
-        if (isCardDeclined()) window.history.back()
-        else if (isSuccess()) port.postMessage(createMessageBody({ done: true }));
-      } else if (message.reload) {
-        window.location.reload();
-      }
+  // If message is coming from background
+  if (message.sender === 'background') {
+    if (message.start) {
+      goToProductSection(message.section);
+    } else if (message.findProduct) {
+      selectProductFromAll(message.keyword);
+    } else if (message.selectColor) {
+      selectColor(message.color);
+    } else if (message.selectSize) {
+      selectSize(message.sizes);
+    } else if (message.goToCheckout) {
+      goToCheckout();
+    } else if (message.placeOrder) {
+      fillFormAndOrder(message.billing, message.cc, message.checkoutDelay);
+    } else if (message.checkoutResponse) {
+      manageCheckoutResponse();
+    } else if (message.reload) {
+      window.location.reload();
     }
-  });
+  }
 });

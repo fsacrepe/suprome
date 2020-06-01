@@ -1,31 +1,75 @@
-let page = null;
-let start = false;
-const cartUrl = 'https://www.supremenewyork.com/shop/cart';
-const checkoutUrl = 'https://www.supremenewyork.com/checkout/';
-const productSectionUrl = 'https://www.supremenewyork.com/shop/all/';
-const productSelectedUrl = 'https://www.supremenewyork.com/shop/';
-const checkoutResponseUrl = 'https://www.supremenewyork.com/checkout.json';
+let botStatus = {};
+const ERRORS = {
+  PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
+  COLOR_SOLD_OUT: 'COLOR_SOLD_OUT',
+  SIZE_NOT_FOUND: 'SIZE_NOT_FOUND',
+  PRODUCT_SOLD_OUT: 'PRODUCT_SOLD_OUT',
+  CC_DECLINED: 'CC_DECLINED',
+};
 
-function createMessage(content, config = {}) {
-  return {
-    sender: 'background',
-    config,
-    ...content
-  };
+function sendMessage(port, message) {
+  port.postMessage({ sender: 'background', ...message });
 }
 
-function clearCCStorage() {
-  chrome.storage.sync.remove('suprome-cc', () => {
-    console.log('[STORAGE] CC Info removed');
-  });
+function transformProductSection(section) {
+  if (section.indexOf('_') !== -1) {
+    const replaced = section.replace(new RegExp(/_/gi), '-');
+    return replaced;
+  }
+  return section;
 }
 
-function stopBot(config = null) {
-  page = null;
-  start = false;
-  console.timeEnd('Execution time');
-  if (!!config && config['suprome-config'].autoclear)
-    clearCCStorage();
+function createRequestListeners(tabId) {
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    botStatus[tabId].next = { findProduct: true, keyword: botStatus[tabId].config.product.keyword };
+  }, { urls: [`https://www.supremenewyork.com/shop/all/${botStatus[tabId].config.product.section}`] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    if (r.url.indexOf('?') != -1) {
+      sendMessage(botStatus[tabId].portContentScript, { selectSize: true, sizes: botStatus[tabId].config.product.sizes });
+    } else {
+      botStatus[tabId].next = { selectColor: true, color: botStatus[tabId].config.product.colors[0] };
+    }
+  }, { urls: [`https://www.supremenewyork.com/shop/${transformProductSection(botStatus[tabId].config.product.section)}/*/*`] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
+  }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    botStatus[tabId].next = {
+      placeOrder: true,
+      billing: botStatus[tabId].config.billing,
+      cc: botStatus[tabId].config.cc,
+      checkoutDelay: botStatus[tabId].config.extension.checkoutDelay,
+    };
+  }, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    botStatus[tabId].next = { start: true, section: botStatus[tabId].config.product.section };
+  }, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
+  }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
+
+  chrome.webRequest.onCompleted.addListener((r) => {
+    const { tabId } = r;
+    if (!botStatus[tabId].start) return;
+    stopBot(tabId);
+  }, { urls: ['*://www.paypal.com/**'] }, []);
 }
 
 // Used to set extension's icon in greyscale if not on supremenewyork.com
@@ -44,17 +88,13 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Block images and css files from loading
-chrome.webRequest.onBeforeRequest.addListener(
-  r => ({cancel: start && (r.url.indexOf('.jpg') != -1 || r.url.indexOf('.gif') != -1 || r.url.indexOf('.css') != 1)}),
-  { urls: ['https://assets.supremenewyork.com/*', 'https://*.cloudfront.net/*'] },
-  ['blocking']
-);
-
 // Get config first
-chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'suprome-config'], (config) => {
+chrome.storage.local.get('suprome', (_config) => {
+  let config = _config.suprome;
   let portPopup; // Used to store communication port between popup and background
-  let portContentScript; // Used to store communication port between content script and background
+  let profileGlobalIndex = 0;
+
+  const stopBot = (tabId) => botStatus[tabId].start = false;
 
   // Get connection links to communicate between js files
   chrome.runtime.onConnect.addListener((_port) => {
@@ -63,55 +103,48 @@ chrome.storage.sync.get(['suprome-product', 'suprome-billing', 'suprome-cc', 'su
       portPopup = _port;
       portPopup.onMessage.addListener((message) => {
         if (message.start) {
-          console.time('Execution time');
-          console.time('Time to checkout');
-          start = true;
-          portContentScript.postMessage(createMessage({ start: true }, config));
-          setTimeout(() => stopBot(config), config['suprome-config'].timeout * 1000);
+          for (const tabId in botStatus) {
+            createRequestListeners(tabId);
+            botStatus[tabId].start = true;
+            botStatus[tabId].colorsIndex = 0;
+            sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
+            setTimeout(() => stopBot(tabId), botStatus[tabId].config.extension.timeout * 1000)
+          }
         } else if (message.stop) {
-          stopBot(config);
+          for (const tabId in botStatus) stopBot(tabId);
+          profileGlobalIndex = 0;
         }
       });
     } else if (_port.name === 'suprome-content_script') { // Message coming from content script
-      portContentScript = _port;
-      portContentScript.onMessage.addListener((message) => {
-        if (message.done) {
-          stopBot(config);
-        } else if (message.error === 'NOT_FOUND') {
-          page = null;
-          portContentScript.postMessage(createMessage({ start: true }, config));
-        } else if (message.error === 'NEED_RESTOCK') {
-          page = null
-          setTimeout(() => portContentScript.postMessage(createMessage({ reload: true }, config)), config['suprome-config'].restockReloadDelay);
+      const tabId = _port.sender.tab.id;
+      if (!botStatus[tabId]) {
+        botStatus = Object.assign({}, botStatus, { [tabId]: { start: false, colorsIndex: 0, next: null, portContentScript: _port, config: config[profileGlobalIndex++] } });
+      } else {
+        botStatus[tabId].portContentScript = _port;
+      }
+      botStatus[tabId].portContentScript.onMessage.addListener((message) => {
+        if (message.error === ERRORS.COLOR_SOLD_OUT) {
+          botStatus[tabId].colorsIndex++;
+          if (botStatus[tabId].colorsIndex === botStatus[tabId].config.product.colors.length) {
+            botStatus[tabId].colorsIndex = 0;
+            setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), botStatus[tabId].config.extension.restockReloadDelay);
+          } else {
+            sendMessage(botStatus[tabId].portContentScript, { selectColor: true, color: botStatus[tabId].config.product.colors[botStatus[tabId].colorsIndex] });
+          }
+        } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
+          botStatus[tabId].colorsIndex = 0;
+          setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
+        } else if (message.error === ERRORS.CC_DECLINED) {
+          botStatus[tabId].colorsIndex = 0;
+          botStatus[tabId].config.extension.checkoutDelay += botStatus[tabId].config.extension.checkoutDelayIncrease || 0;
+          sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
         } else if (message.loaded) {
-          portContentScript.postMessage(createMessage({ page }, config));
-        } else if (message.checkout) {
-          console.timeEnd('Time to checkout');
+          sendMessage(botStatus[tabId].portContentScript, botStatus[tabId].next);
+          botStatus[tabId].next = null;
+        } else if (message.done) {
+          stopBot(tabId);
         }
       });
     }
-
   });
-
-  // Receive finished requests from supremenewyork.com, so content_script can go quicker
-  chrome.webRequest.onCompleted.addListener((r) => {
-    if (!start) return;
-    if (r.url.indexOf(productSectionUrl) != -1 && page !== 'product-section') {
-      page = 'product-section';
-    } else if (r.url.indexOf(productSelectedUrl + config['suprome-product'].section) != -1 && page !== 'product-selected') {
-      page = 'product-selected';
-    } else if (r.url === checkoutUrl && page !== 'checkout') {
-      page = 'checkout';
-    } else if (r.url.indexOf(cartUrl) && page !== 'checkout-oos') {
-      // Product out of stock
-      page = 'checkout-oos';
-    } else if (r.url === checkoutResponseUrl && page !== 'checkout-response') {
-      // View does not reload on checkout response, so I directly send the message here
-      page = 'checkout-response';
-      portContentScript.postMessage(createMessage({ page }, config));
-    } else if (r.url.indexOf('paypal.com') != -1) {
-      stopBot(config);
-    }
-  }, { urls: ["*://www.supremenewyork.com/*", "https://www.paypal.com/*"] }, []);
-
 });

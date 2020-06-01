@@ -3,243 +3,349 @@
     <title>Suprome</title>
     <style>
       .padded {
-        padding-left: 30px;
-        padding-right: 30px;
-      }
-      div[class^="pure-u"] {
-        margin-bottom: 5px;
-        margin-top: 5px;
-      }
-      .button-small {
-        font-size: 0.6em !important;
-      }
-      .button-warning {
-        background: rgb(223, 117, 20) !important;
-        color: white !important;
-      }
-      .warn {
-        background-color: #F5CC4C;
-        border-radius: 10px;
-        font-size: 13px;
-        padding: 10px;
-      }
-      #configSaved {
-        visibility: hidden;
-        font-size: 13px;
-      }
-      .badge {
-        background-color: rgb(231, 43, 0);
-        border-radius: 5px;
-        color: white;
-        margin-right: 10px;
-        padding: 5px 10px;
-        text-align: center;
-      }
-      #configProductSizes {
-        display: flex;
-        flex-direction: row;
-      }
-      #configProductColors {
-        display: flex;
-        flex-direction: row;
+        padding-left: 60px;
+        padding-right: 60px;
       }
     </style>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.1/build/pure-min.css" integrity="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47" crossorigin="anonymous">
+    <meta http-equiv="Content-Security-Policy" content="default-src *; style-src 'self' http://* 'unsafe-inline'; script-src 'self' http://* 'unsafe-inline' 'unsafe-eval'" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
   </head>
   <body width="100%">
-    <h1 class="padded">Suprome config</h1>
-    <form class="pure-form pure-g">
-      <div class="pure-u-1-4">
-        <div class="padded">
-          <div class="pure-u-1">
-            <h2>Product Details</h2>
-          </div>
-          <div class="pure-u-1">
-            <select id="productSection">
-              <option value="jackets">Jackets</option>
-              <option value="shirts">Shirts</option>
-              <option value="tops_sweaters">Tops/Sweaters</option>
-              <option value="sweatshirts">Sweatshirts</option>
-              <option value="pants">Pants</option>
-              <option value="t-shirts">T-shirts</option>
-              <option value="hats">Hats</option>
-              <option value="bags">Bags</option>
-              <option value="accessories">Accessories</option>
-              <option value="shoes">Shoes</option>
-              <option value="skate">Skate</option>
-            </select>
-          </div>
-          <div class="pure-u-1">
-            <input class="pure-input-1-2" id="productKeyword" type="text" placeholder="Keyword" />
-          </div>
-          <div class="pure-u-1">
-            <input class="pure-input-1-2" id="productColors" type="text" placeholder="Color" />
-            <button id="addColor" class="pure-button pure-button-primary pure-input-1-5">Add</button>
-            <button id="popColor" class="pure-button button-warning pure-input-1-5">Remove</button>
-          </div>
-          <div id="configProductColors" class="pure-u-1"></div>
-          <div class="pure-u-1">
-            <select class="pure-input-1-2" id="productSizes">
-              <option value="Small">Small</option>
-              <option value="Medium">Medium</option>
-              <option value="Large">Large</option>
-              <option value="XLarge">XLarge</option>
-            </select>
-            <button id="addSize" class="pure-button pure-button-primary pure-input-1-5">Add</button>
-            <button id="popSize" class="pure-button button-warning pure-input-1-5">Remove</button>
-          </div>
-          <div id="configProductSizes" class="pure-u-1"></div>
-        </div>
+    <nav class="navbar navbar-expand-sm navbar-light bg-light">
+      <a class="navbar-brand">Suprome config</a>
+      <div class="collapse navbar-collapse">
+        <ul class="nav navbar-nav mr-auto" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" href="#tasks" data-toggle="tab" role="tab" aria-controls="tasks" aria-selected="true">Tabs</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#profiles" data-toggle="tab" role="tab" aria-controls="profiles" aria-selected="false">Profiles</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#restock" data-toggle="tab" role="tab" aria-controls="restock" aria-selected="false">Restock</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#proxy" data-toggle="tab" role="tab" aria-controls="proxy" aria-selected="false">
+              Proxy
+              <span class="badge badge-warning">Beta</span>
+            </a>
+          </li>
+        </ul>
+        <a class="nav-link" target="_blank" href="https://chrome.google.com/webstore/detail/sessionbox-free-multi-log/megbklhjamjbcafknkgmokldgolkdfig?hl=fr">
+          Install SessionBox
+        </a>
+        <button id="compileConfigBtn" type="button" class="btn btn-warning">Reload Bot</button>
       </div>
-      <div class="pure-u-1-4">
-        <div class="padded">
-          <div class="pure-u-1">
-            <h2>Extension Config</h2>
-          </div>
-          <div class="pure-u-1-2">
-            <label for="extensionTimeout">Timeout (seconds)</label>
-            <input id="extensionTimeout" class="pure-input-1" type="number" />
-          </div>
-          <div class="pure-u-1-2">
-            <label for="extensionCheckoutDelay">Checkout delay (ms)</label>
-            <input id="extensionCheckoutDelay" class="pure-input-1" type="number" />
-          </div>
-          <div class="pure-u-1-2">
-            <label for="extensionRestockReloadDelay">Restock Reload delay (ms)</label>
-            <input id="extensionRestockReloadDelay" class="pure-input-1" type="number" />
-          </div>
-          <div class="pure-u-1-2">
-            <label for="extensionAutoclearStorage">Automatically clear Credit Card info</label>
-            <input id="extensionAutoclearStorage" class="pure-input-1" type="checkbox" />
-          </div>
-        </div>
-      </div>
-    </form>
-    <form class="pure-form pure-g">
-      <div class="pure-u-1-4">
-        <div class="padded">
-          <div class="pure-u-1">
-            <h2>Billing Informations</h2>
-          </div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingName" type="text" placeholder="Name"/></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingEmail" type="email" placeholder="Email"/></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingTel" type="text" placeholder="Tel"/></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingAddress" type="text" placeholder="Address"/></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingAddress2" type="text" placeholder="Address 2"/></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingAddress3" type="text" placeholder="Address 3"/></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingCity" type="text" placeholder="City" /></div>
-          <div class="pure-u-1"><input class="pure-input-1" id="billingZip" type="text" placeholder="Postal Code"/></div>
-          <div class="pure-u-1">
-            <select class="pure-input-1" id="billingCountry">
-              <option value="GB">UK</option>
-              <option value="NB">UK (N. IRELAND)</option>
-              <option value="">-</option>
-              <option value="AT">AUSTRIA</option>
-              <option value="BY">BELARUS</option>
-              <option value="BE">BELGIUM</option>
-              <option value="BG">BULGARIA</option>
-              <option value="HR">CROATIA</option>
-              <option value="CZ">CZECH REPUBLIC</option>
-              <option value="DK">DENMARK</option>
-              <option value="EE">ESTONIA</option>
-              <option value="FI">FINLAND</option>
-              <option value="FR">FRANCE</option>
-              <option value="DE">GERMANY</option>
-              <option value="GR">GREECE</option>
-              <option value="HU">HUNGARY</option>
-              <option value="IS">ICELAND</option>
-              <option value="IE">IRELAND</option>
-              <option value="IT">ITALY</option>
-              <option value="LV">LATVIA</option>
-              <option value="LT">LITHUANIA</option>
-              <option value="LU">LUXEMBOURG</option>
-              <option value="MC">MONACO</option>
-              <option value="NL">NETHERLANDS</option>
-              <option value="NO">NORWAY</option>
-              <option value="PL">POLAND</option>
-              <option value="PT">PORTUGAL</option>
-              <option value="RO">ROMANIA</option>
-              <option value="RU">RUSSIA</option>
-              <option value="SK">SLOVAKIA</option>
-              <option value="SI">SLOVENIA</option>
-              <option value="ES">SPAIN</option>
-              <option value="SE">SWEDEN</option>
-              <option value="CH">SWITZERLAND</option>
-              <option value="TR">TURKEY</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="pure-u-1-4">
-        <div class="padded">
-          <div class="pure-u-1">
-            <h2>Credit Card</h2>
-            <p class="warn">
-              &#x26A0; Storage isn't safe, better use Paypal or clearing storage after use
-            </p>
-          </div>
-          <div class="pure-u-1">
-            <select class="pure-input-1" id="ccType">
-              <option value="visa">Visa</option>
-              <option value="american_express">American Express</option>
-              <option value="master">Master Card</option>
-              <option value="solo">Solo</option>
-              <option value="paypal">Paypal</option>
-            </select>
-          </div>
-          <div class="pure-u-1">
-            <input class="pure-input-1" id="ccCnb" type="text" placeholder="Number"/>
-          </div>
-          <div class="pure-u-1">
-            <select class="pure-input-1-4" id="ccMonth">
-              <option value="01">01</option>
-              <option value="02">02</option>
-              <option value="03">03</option>
-              <option value="04">04</option>
-              <option value="05">05</option>
-              <option value="06">06</option>
-              <option value="07">07</option>
-              <option value="08">08</option>
-              <option value="09">09</option>
-              <option value="10">10</option>
-              <option value="11">11</option>
-              <option value="12">12</option>
-            </select>
-            <select class="pure-input-1-4" id="ccYear">
-              <option value="2020">2020</option>
-              <option value="2021">2021</option>
-              <option value="2022">2022</option>
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-              <option value="2027">2027</option>
-              <option value="2028">2028</option>
-              <option value="2029">2029</option>
-              <option value="2030">2030</option>
-            </select>
-          </div>
-          <div class="pure-u-1">
-            <input class="pure-input-2-4" type="text" id="ccCvv" placeholder="CVV" />
+    </nav>
+    <div class="tab-content">
+      <div class="tab-pane active" id="tasks" role="tabpanel" aria-labelledby="tasks-tab" style="padding: 2%;">
+        <div class="accordion" id="accordionContainer" style="margin-bottom: 5%;"></div>
+        <div class="accordion" id="accordionCreateTask">
+          <div class="card">
+            <div class="card-header" id="createHeader">
+              <h2 class="mb-0">
+                <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#createBody">
+                <span id="tab-title">+ Create new tab</span>
+                </button>
+              </h2>
+            </div>
+            <div id="createBody" class="collapse" data-parent="#accordionCreateTask">
+              <div class="container card-body">
+                <div class="row" style="margin-bottom: 50px;">
+                  <div class="col padded">
+                    <h5>Profile</h5>
+                    <select class="form-control profileSelection"></select>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col padded">
+                    <h5>Product Details</h5>
+                    <div class="form-group">
+                      <label for="productSection">Product section</label>
+                      <select class="form-control" id="productSection">
+                        <option value="jackets">Jackets</option>
+                        <option value="shirts">Shirts</option>
+                        <option value="tops_sweaters">Tops/Sweaters</option>
+                        <option value="sweatshirts">Sweatshirts</option>
+                        <option value="pants">Pants</option>
+                        <option value="t-shirts">T-shirts</option>
+                        <option value="hats">Hats</option>
+                        <option value="bags">Bags</option>
+                        <option value="accessories">Accessories</option>
+                        <option value="shoes">Shoes</option>
+                        <option value="skate">Skate</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="productKeyword">Keyword</label>
+                      <input class="form-control" id="productKeyword" type="text" placeholder="Keyword" />
+                    </div>
+                    <div class="form-group colors">
+                      <label for="productColors">Colors</label>
+                      <div class="input-group">
+                        <input class="form-control" id="productColors" type="text" placeholder="Color" aria-describedby="colorsButtons"/>
+                        <div class="input-group-append" id="colorsButtons">
+                          <button id="addColor" class="btn btn-outline-secondary">+</button>
+                          <button id="popColor" class="btn btn-outline-secondary">-</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="configProductColors"></div>
+                    <div class="form-group sizes">
+                      <label for="productSizes">Sizes</label>
+                      <div class="input-group">
+                        <select class="form-control" id="productSizes">
+                          <option value="Small">Small</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Large">Large</option>
+                          <option value="XLarge">XLarge</option>
+                        </select>
+                        <div class="input-group-append">
+                          <button id="addSize" class="btn btn-outline-secondary">+</button>
+                          <button id="popSize" class="btn btn-outline-secondary">-</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="configProductSizes"></div>
+                  </div>
+                  <div class="col padded">
+                    <h5>Extension Config</h5>
+                    <div class="form-group">
+                      <label for="extensionTimeout">Timeout (seconds)</label>
+                      <input class="form-control" id="extensionTimeout" type="number" />
+                    </div>
+                    <div class="form-group">
+                      <div class="form-row">
+                        <div class="col">
+                          <label for="extensionCheckoutDelay">Checkout delay (ms)</label>
+                          <input class="form-control" id="extensionCheckoutDelay" type="number" />
+                        </div>
+                        <div class="col">
+                          <label for="extensionCheckoutDelayIncrease">Auto increase (ms)</label>
+                          <input class="form-control" id="extensionCheckoutDelayIncrease" type="number" />
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="extensionRestockReloadDelay">Restock Reload delay (ms)</label>
+                      <input class="form-control" id="extensionRestockReloadDelay" type="number" />
+                    </div>
+                  </div>
+                </div>
+                <div class="row float-right">
+                  <div class="col">
+                    <div class="form-group">
+                      <button id="createTabBtn" class="btn btn-primary" type="button">Create</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </form>
-    <div class="pure-u-1">
-      <div class="padded">
-        <div class="pure-u-1">
-          <p id="configSaved">✅ Config successfully saved !</p>
+      <div class="tab-pane fade" id="profiles" role="tabpanel" aria-labelledby="profiles-tab" style="margin-top: 2%; padding: 0 8px;">
+        <div class="row">
+          <div class="col-2">
+            <div class="nav flex-column nav-pills" id="profilesPills" role="tablist" aria-orientation="vertical">
+            </div>
+          </div>
+          <div class="col-10" style="padding: 0 10%;">
+            <div id="profilesContainer" class="tab-content">
+              <div class="tab-pane fade show active" id="profileForm" role="tabpanel">
+                <div id="profileForm">
+                  <div class="row">
+                    <div class="col padded">
+                      <div class="form-group">
+                        <h5>Profile name</h5>
+                        <input class="form-control" type="text" id="profileName" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col">
+                      <div class="row" style="margin-bottom:15px;">
+                        <div class="col-10">
+                          <h5>Billing Informations</h5>
+                        </div>
+                      </div>
+                      <div class="form-group"><input class="form-control" id="billingName" type="text" placeholder="Name"/></div>
+                      <div class="form-group"><input class="form-control" id="billingEmail" type="email" placeholder="Email"/></div>
+                      <div class="form-group"><input class="form-control" id="billingTel" type="text" placeholder="Tel"/></div>
+                      <div class="form-group"><input class="form-control" id="billingAddress" type="text" placeholder="Address"/></div>
+                      <div class="form-group"><input class="form-control" id="billingAddress2" type="text" placeholder="Address 2"/></div>
+                      <div class="form-group"><input class="form-control" id="billingAddress3" type="text" placeholder="Address 3"/></div>
+                      <div class="form-group"><input class="form-control" id="billingCity" type="text" placeholder="City" /></div>
+                      <div class="form-group"><input class="form-control" id="billingZip" type="text" placeholder="Postal Code"/></div>
+                      <div class="form-group">
+                        <select class="form-control" id="billingCountry">
+                          <option value="GB">UK</option>
+                          <option value="NB">UK (N. IRELAND)</option>
+                          <option value="">-</option>
+                          <option value="AT">AUSTRIA</option>
+                          <option value="BY">BELARUS</option>
+                          <option value="BE">BELGIUM</option>
+                          <option value="BG">BULGARIA</option>
+                          <option value="HR">CROATIA</option>
+                          <option value="CZ">CZECH REPUBLIC</option>
+                          <option value="DK">DENMARK</option>
+                          <option value="EE">ESTONIA</option>
+                          <option value="FI">FINLAND</option>
+                          <option value="FR">FRANCE</option>
+                          <option value="DE">GERMANY</option>
+                          <option value="GR">GREECE</option>
+                          <option value="HU">HUNGARY</option>
+                          <option value="IS">ICELAND</option>
+                          <option value="IE">IRELAND</option>
+                          <option value="IT">ITALY</option>
+                          <option value="LV">LATVIA</option>
+                          <option value="LT">LITHUANIA</option>
+                          <option value="LU">LUXEMBOURG</option>
+                          <option value="MC">MONACO</option>
+                          <option value="NL">NETHERLANDS</option>
+                          <option value="NO">NORWAY</option>
+                          <option value="PL">POLAND</option>
+                          <option value="PT">PORTUGAL</option>
+                          <option value="RO">ROMANIA</option>
+                          <option value="RU">RUSSIA</option>
+                          <option value="SK">SLOVAKIA</option>
+                          <option value="SI">SLOVENIA</option>
+                          <option value="ES">SPAIN</option>
+                          <option value="SE">SWEDEN</option>
+                          <option value="CH">SWITZERLAND</option>
+                          <option value="TR">TURKEY</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="row"  style="margin-bottom:15px;">
+                        <div class="col">
+                          <h5>Credit card</h5>
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <select class="form-control" id="ccType">
+                          <option value="visa">Visa</option>
+                          <option value="american_express">American Express</option>
+                          <option value="master">Master Card</option>
+                          <option value="solo">Solo</option>
+                          <option value="paypal">Paypal</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <input class="form-control" id="ccCnb" type="text" placeholder="Number"/>
+                      </div>
+                      <div class="row">
+                        <div class="col">
+                          <div class="form-group">
+                            <select class="form-control" id="ccMonth" placeholder="Month">
+                              <option value="01">01</option>
+                              <option value="02">02</option>
+                              <option value="03">03</option>
+                              <option value="04">04</option>
+                              <option value="05">05</option>
+                              <option value="06">06</option>
+                              <option value="07">07</option>
+                              <option value="08">08</option>
+                              <option value="09">09</option>
+                              <option value="10">10</option>
+                              <option value="11">11</option>
+                              <option value="12">12</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="col">
+                          <div class="form-group">
+                            <select class="form-control" id="ccYear" placeholder="Year">
+                              <option value="2020">2020</option>
+                              <option value="2021">2021</option>
+                              <option value="2022">2022</option>
+                              <option value="2023">2023</option>
+                              <option value="2024">2024</option>
+                              <option value="2025">2025</option>
+                              <option value="2026">2026</option>
+                              <option value="2027">2027</option>
+                              <option value="2028">2028</option>
+                              <option value="2029">2029</option>
+                              <option value="2030">2030</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="col">
+                          <div class="form-group">
+                            <input class="form-control" type="text" id="ccCvv" placeholder="CVV" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row float-right" style="margin-top: 15px;">
+                    <div class="col">
+                      <div class="form-group">
+                        <button id="removeProfileBtn" type="button" class="btn btn-danger" style="display: none;">Remove</button>
+                        <button id="submitProfileBtn" type="button" class="btn btn-primary">Create profile</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <button id="submitAll" class="pure-button pure-button-primary">
-          Save All
-        </button>
-        <button id="resetAll" class="pure-button button-warning pure-button-primary">
-          Reset All
-        </button>
+      </div>
+      <div class="tab-pane fade" id="restock" role="tabpanel" aria-labelledby="restock-tab" style="margin-top: 2%; padding: 0 8px;">
+        <div class="card mb-4">
+          <div class="card-body">
+            <form class="form-inline">
+              <div class="form-group">
+                <h5 class="card-title mr-3">Restock monitor</h5>
+                <div class="custom-control custom-switch mb-2">
+                  <input type="checkbox" class="custom-control-input" id="restockMonitorToggle" />
+                  <label class="custom-control-label" for="restockMonitorToggle"></label>
+                </div>
+              </div>
+            </form>
+            <form>
+              <div class="form-group">
+                <label for="restockMonitorDelay">Monitoring interval (ms)</label>
+                <input id="restockMonitorDelay" type="number" class="form-control" />
+              </div>
+              <div style="text-align:right;">
+                <button id="clearMonitorHistoryBtn" type="button" class="btn btn-info">Clear monitor history</button>
+                <button id="saveRestockMonitorBtn" type="button" class="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div id="restockedList"></div>
+      </div>
+      <div class="tab-pane fade" id="proxy" role="tabpanel" aria-labelledby="proxy-tab" style="padding: 2% 2%;">
+        <div class="alert alert-info" role="alert">
+          Proxies are randomly used on each supremenewyork.com call. This also takes your personnal non proxified connection.
+        </div>
+        <div class="alert alert-warning" role="alert">
+          Don't forget to connect to all your proxies before using it in drop!
+        </div>
+        <h1>Proxy list</h1>
+        <div class="mt-4">
+          <ul id="proxyList" class="list-group">
+            <li id="proxyListAdd" class="list-group-item">
+              <form class="form-inline mb-0">
+                <div class="form-group mb-2 mr-4">
+                  <input type="text" class="form-control" id="newProxy" placeholder="Proxy address" />
+                </div>
+                <button id="proxyListConnectBtn" type="button" class="btn btn-primary mb-2 mr-2">Connect</button>
+                <button id="proxyListAddBtn" type="button" class="btn btn-success mb-2">Add</button>
+              </form>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </body>
-  <script src="jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
   <script src="options.js"></script>
 </html>
