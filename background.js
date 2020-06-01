@@ -134,7 +134,7 @@ chrome.storage.local.get('suprome', (_config) => {
         } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
           botStatus[tabId].colorsIndex = 0;
           setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
-        } else if (message.error === ERRORS.CC_DECLINED) {
+        } else if (message.error === ERRORS.CC_DECLINED || message.error === ERRORS.PRODUCT_SOLD_OUT) {
           botStatus[tabId].colorsIndex = 0;
           botStatus[tabId].config.extension.checkoutDelay += botStatus[tabId].config.extension.checkoutDelayIncrease || 0;
           sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });

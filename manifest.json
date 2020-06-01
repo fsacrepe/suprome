@@ -12,15 +12,17 @@
     "run_at": "document_end"
   }],
   "background": {
-    "scripts": ["jquery.min.js", "background.js", "restock.js", "proxy.js"]
+    "scripts": ["jquery.min.js", "background.js", "restock.js", "proxy.js", "cookies.js"]
   },
   "options_page": "options.html",
   "content_security_policy": "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://stackpath.bootstrapcdn.com; object-src 'self'",
   "permissions": [
     "<all_urls>",
     "declarativeContent",
+    "webNavigation",
     "notifications",
     "webRequest",
+    "cookies",
     "storage",
     "proxy",
     "tabs"

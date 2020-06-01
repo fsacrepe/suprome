@@ -8,6 +8,10 @@ function createMessageBody(content) {
   };
 }
 
+function isSoldOut() {
+  return $('.out_of_stock').length > 0;
+}
+
 function goToProductSection(section) {
   location.href = `https://www.supremenewyork.com/shop/all/${section}`;
 }
@@ -19,7 +23,7 @@ function selectProductFromAll(keyword) {
 }
 
 function selectColor(color) {
-  const foundColor = $(`a[data-style-name="${color}"][data-sold-out="false"]`);
+  const foundColor = color ? $(`a[data-style-name*="${color}"][data-sold-out="false"]`) : $('a[data-sold-out="false"]');
   if (!foundColor.length) return port.postMessage(createMessageBody({ error: 'COLOR_SOLD_OUT' }));
   foundColor[0].click();
 }
@@ -47,6 +51,8 @@ function goToCheckout() {
 function manageCheckoutResponse() {
   if ($('.failed').length)
     return port.postMessage(createMessageBody({ error: 'CC_DECLINED' }));
+  else if (isSoldOut())
+    return port.postMessage(createMessageBody({ error: 'PRODUCT_SOLD_OUT' }));
   else
     return port.postMessage(createMessageBody({ done: true }));
 }
@@ -94,6 +100,7 @@ port.onMessage.addListener((message) => {
     } else if (message.goToCheckout) {
       goToCheckout();
     } else if (message.placeOrder) {
+      if (isSoldOut()) return port.postMessage(createMessageBody({ error: 'PRODUCT_SOLD_OUT' }));
       fillFormAndOrder(message.billing, message.cc, message.checkoutDelay);
     } else if (message.checkoutResponse) {
       manageCheckoutResponse();
