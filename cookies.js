@@ -1,54 +1,57 @@
 const cookiesPerTab = {};
 
-function getInitialCookies(tabId, { name, value }) {
-  const initalCookies = {};
-  value.split('; ').forEach((uniqueCookie) => {
-    const splittedCookie = uniqueCookie.split('=');
-    initalCookies[splittedCookie[0]] = splittedCookie[1];
-  });
-  cookiesPerTab[tabId] = initalCookies;
-}
-
 function updateCookies(tabId, responseHeaders) {
-  const setCookies = responseHeaders.filter(header => header.name.toLowerCase() === 'set-cookie');
-  const newCookies = setCookies.map(setCookieHeader => setCookieHeader.value.split(';')[0]);
-  if (!cookiesPerTab[tabId]) cookiesPerTab[tabId] = {};
-  newCookies.forEach(newCookie => {
-    const splitted = newCookie.split('=');
-    cookiesPerTab[tabId][splitted[0]] = splitted[1];
+  return responseHeaders.map(header => {
+    if (header.name.toLowerCase() === 'set-cookie') {
+      return { name: 'set-cookie', value: `@@${tabId}_${header.value}`};
+    }
+    return header;
   });
 }
 
-function buildCookies(tabId) {
-  const cookieArray = [];
-  for (const cookieName in cookiesPerTab[tabId]) {
-    cookieArray.push(`${cookieName}=${cookiesPerTab[tabId][cookieName]}`);
-  }
-  return { name: 'Cookie', value: cookieArray.join('; ') };
-}
-
-chrome.webNavigation.onBeforeNavigate.addListener(({ tabId, url }) => {
-  if (url.indexOf('supremenewyork.com') !== -1) {
-    let cookies = Object.assign({}, cookiesPerTab[tabId] || {}, { cart: '', pure_cart: '' });
-    for (const cookie in cookies) {
-      chrome.cookies.set({ url: 'https://www.supremenewyork.com', name: cookie, value: cookies[cookie] });
+function buildCookies(tabId, requestHeaders, browserCookies = null) {
+  return requestHeaders.map(header => {
+    if (header.name === 'Cookie') {
+      let obj = {};
+      let value = '';
+      let browserSplit;
+      if (browserCookies) browserSplit = header.value.split(';').map(s => s.trim());
+      const requestSplit = header.value.split(';').map(s => s.trim());
+      const originalCookies = (browserSplit || requestSplit).filter(s => s.indexOf('@@') != 0);
+      const tabCookies = requestSplit.filter(s => s.indexOf(`@@${tabId}_`) === 0).map(s => s.slice(`@@${tabId}_`.length));
+      const allCookies = tabCookies.concat(originalCookies);
+      allCookies.forEach((cookie) => { const cookieSplit = cookie.split('='); obj[cookieSplit[0]] = cookieSplit[1]});
+      for (const prop in obj) {
+        value += `${prop}=${obj[prop]}; `;
+      }
+      return { name: 'Cookie', value };
     }
-  }
-});
+    return header;
+  });
+}
 
 chrome.webRequest.onBeforeSendHeaders.addListener((details) => {
+  if (details.tabId < 0) return;
   let cookiesIndex;
   details.requestHeaders.forEach((head, index) => {
     if (head.name === "Cookie") cookiesIndex = index;
   });
-  if (!cookiesPerTab[details.tabId]) {
-    details.requestHeaders.splice(cookiesIndex, 1);
-  } else details.requestHeaders[cookiesIndex] = buildCookies(details.tabId);
-  return { requestHeaders: details.requestHeaders };
-}, { urls: ["*://www.supremenewyork.com/**"] }, ["requestHeaders", "extraHeaders"]);
+  return { requestHeaders: buildCookies(details.tabId, details.requestHeaders, cookiesPerTab[details.tabId]) };
+}, { urls: ["*://www.supremenewyork.com/**"] }, ["requestHeaders", "extraHeaders", "blocking"]);
 
 chrome.webRequest.onHeadersReceived.addListener((details) => {
-  updateCookies(details.tabId, details.responseHeaders);
-}, { urls: ['*://www.supremenewyork.com/**']}, ["responseHeaders", "extraHeaders"]);
+  if (details.tabId < 0) return;
+  return { responseHeaders: updateCookies(details.tabId, details.responseHeaders) };
+}, { urls: ['*://www.supremenewyork.com/**']}, ["responseHeaders", "extraHeaders", "blocking"]);
 
-chrome.tabs.onRemoved.addListener((tabId) => delete cookiesPerTab[tabId]);
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (tab.url.indexOf('supremenewyork.com') !== -1) {
+    chrome.tabs.sendMessage(tabId, { sender: 'cookies', inject: true, tabId });
+  }
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.sender === 'content_script' && message.cookie) {
+    cookiesPerTab[message.tabId] = message.cookie;
+  }
+});

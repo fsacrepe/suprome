@@ -23,6 +23,7 @@ function createRequestListeners(tabId) {
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
     if (!botStatus[tabId].start) return;
+    console.time(`time ${tabId}`)
     botStatus[tabId].next = { findProduct: true, keyword: botStatus[tabId].config.product.keyword };
   }, { urls: [`https://www.supremenewyork.com/shop/all/${botStatus[tabId].config.product.section}`] }, []);
 
@@ -51,6 +52,7 @@ function createRequestListeners(tabId) {
       cc: botStatus[tabId].config.cc,
       checkoutDelay: botStatus[tabId].config.extension.checkoutDelay,
     };
+    console.timeEnd(`time ${tabId}`)
   }, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {

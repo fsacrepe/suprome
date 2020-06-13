@@ -109,3 +109,53 @@ port.onMessage.addListener((message) => {
     }
   }
 });
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.sender === 'cookies') {
+    if (message.inject) {
+      injectSenderCode(message.tabId);
+      injectCode(message.tabId);
+    }
+  }
+})
+
+const injectCode = (tabId) => {
+  const script = document.createElement('script');
+  script.textContent = `
+    $('body').append('<p id="suprome" hidden></p>');
+    document.tempCookies = localStorage.getItem('suprome_${tabId}') || document.cookie;
+    document.__defineGetter__('cookie', () => document.tempCookies);
+    document.__defineSetter__('cookie', c => {
+      let cookies = '';
+      const buildCookieObj = (cookies) => {
+        const finalObj = {};
+        cookies.split(';').map(cookie => {
+          const split = cookie.split('=');
+          if (split.length !== 2 || split[0].indexOf(\'@@\') === 0) return;
+          finalObj[split[0].trim()] = split[1].trim();
+        });
+        return finalObj;
+      };
+      const currCookies = buildCookieObj(document.tempCookies);
+      const newCookie = c.split(';')[0].split('=');
+      currCookies[newCookie[0]] = newCookie[1];
+      for (let cook in currCookies) {
+        cookies = \`\$\{cookies\}\$\{cook\}=\$\{currCookies[cook]\}; \`;
+      }
+      document.tempCookies = cookies;
+      localStorage.setItem('supreme_${tabId}', document.tempCookies);
+      $('#suprome').text(document.tempCookies);
+      window.onbeforeunload = () => localStorage.removeItem('supreme_${tabId}');
+    });
+  `;
+  document.head.appendChild(script);
+}
+
+const injectSenderCode = (tabId) => {
+  setInterval(() => {
+    let internalCookie = $('#suprome');
+    if (Object.keys(internalCookie).length) {
+      chrome.runtime.sendMessage(null, { sender: 'content_script', cookie: internalCookie.text(), tabId });
+    }
+  }, 500);
+}
