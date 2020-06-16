@@ -130,9 +130,9 @@ const injectCode = (tabId) => {
       const buildCookieObj = (cookies) => {
         const finalObj = {};
         cookies.split(';').map(cookie => {
-          const split = cookie.split('=');
+          const split = cookie.split('=').map(a => a.trim());
           if (split.length !== 2 || split[0].indexOf(\'@@\') === 0) return;
-          finalObj[split[0].trim()] = split[1].trim();
+          finalObj[split[0]] = split[1];
         });
         return finalObj;
       };
