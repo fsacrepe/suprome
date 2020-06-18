@@ -16,7 +16,7 @@ const connectToProxy = (proxyUrl) => {
     mode: 'pac_script',
     pacScript: {
       data: "function FindProxyForURL(url, host) {\n" +
-      "  if (host == 'whatismyipaddress.com')\n" +
+      "  if (dnsDomainIs(host, '.whatismyipaddress.com') || dnsDomainIs(host, '.supremenewyork.com'))\n" +
       "    return 'PROXY " + proxyUrl + "';\n" +
       "  return 'DIRECT';\n" +
       "}",

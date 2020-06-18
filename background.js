@@ -109,12 +109,20 @@ chrome.storage.local.get('suprome', (_config) => {
       portPopup = _port;
       portPopup.onMessage.addListener((message) => {
         if (message.start) {
-          for (const tabId in botStatus) {
-            createRequestListeners(tabId);
-            botStatus[tabId].start = true;
-            botStatus[tabId].colorsIndex = 0;
-            sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
-            setTimeout(() => stopBot(tabId), botStatus[tabId].config.extension.timeout * 1000)
+          const searchMap = {}
+          config.forEach((tab) => searchMap[`${tab.product.section}:${tab.product.keyword}`] = [...(searchMap[`${tab.product.section}:${tab.product.keyword}`] || []), tab]);
+          for (const search in searchMap) {
+            const params = search.split(':');
+            $.get(`https://www.supremenewyork.com/shop/all/${params[0]}`).then(e => {
+              const productUrl = $($.parseHTML(e)).find(`.inner-article:contains(${params[1]})`).first().find('a');
+              searchMap[search].forEach((conf) => {
+                chrome.tabs.create({ url: `https://www.supremenewyork.com${productUrl[0].pathname}` }, (newTab) => {
+                  botStatus = Object.assign({}, botStatus, { [newTab.id]: { start: true, colorsIndex: 0, next: null, portContentScript: null, config: conf } });
+                  setTimeout(() => stopBot(newTab.id), botStatus[newTab.id].config.extension.timeout * 1000);
+                  createRequestListeners(newTab.id);
+                });
+              })
+            });
           }
         } else if (message.stop) {
           for (const tabId in botStatus) stopBot(tabId);
@@ -123,34 +131,32 @@ chrome.storage.local.get('suprome', (_config) => {
       });
     } else if (_port.name === 'suprome-content_script') { // Message coming from content script
       const tabId = _port.sender.tab.id;
-      if (!botStatus[tabId]) {
-        botStatus = Object.assign({}, botStatus, { [tabId]: { start: false, colorsIndex: 0, next: null, portContentScript: _port, config: config[profileGlobalIndex++] } });
-      } else {
+      if (botStatus[tabId]) {
         botStatus[tabId].portContentScript = _port;
-      }
-      botStatus[tabId].portContentScript.onMessage.addListener((message) => {
-        if (message.error === ERRORS.COLOR_SOLD_OUT) {
-          botStatus[tabId].colorsIndex++;
-          if (botStatus[tabId].colorsIndex === botStatus[tabId].config.product.colors.length) {
+        botStatus[tabId].portContentScript.onMessage.addListener((message) => {
+          if (message.error === ERRORS.COLOR_SOLD_OUT) {
+            botStatus[tabId].colorsIndex++;
+            if (botStatus[tabId].colorsIndex === botStatus[tabId].config.product.colors.length) {
+              botStatus[tabId].colorsIndex = 0;
+              setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), botStatus[tabId].config.extension.restockReloadDelay);
+            } else {
+              sendMessage(botStatus[tabId].portContentScript, { selectColor: true, color: botStatus[tabId].config.product.colors[botStatus[tabId].colorsIndex] });
+            }
+          } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
             botStatus[tabId].colorsIndex = 0;
-            setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), botStatus[tabId].config.extension.restockReloadDelay);
-          } else {
-            sendMessage(botStatus[tabId].portContentScript, { selectColor: true, color: botStatus[tabId].config.product.colors[botStatus[tabId].colorsIndex] });
+            setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
+          } else if (message.error === ERRORS.CC_DECLINED || message.error === ERRORS.PRODUCT_SOLD_OUT) {
+            botStatus[tabId].colorsIndex = 0;
+            botStatus[tabId].config.extension.checkoutDelay += botStatus[tabId].config.extension.checkoutDelayIncrease || 0;
+            sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
+          } else if (message.loaded) {
+            sendMessage(botStatus[tabId].portContentScript, botStatus[tabId].next);
+            botStatus[tabId].next = null;
+          } else if (message.done) {
+            stopBot(tabId);
           }
-        } else if (message.error === ERRORS.PRODUCT_NOT_FOUND) {
-          botStatus[tabId].colorsIndex = 0;
-          setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
-        } else if (message.error === ERRORS.CC_DECLINED || message.error === ERRORS.PRODUCT_SOLD_OUT) {
-          botStatus[tabId].colorsIndex = 0;
-          botStatus[tabId].config.extension.checkoutDelay += botStatus[tabId].config.extension.checkoutDelayIncrease || 0;
-          sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
-        } else if (message.loaded) {
-          sendMessage(botStatus[tabId].portContentScript, botStatus[tabId].next);
-          botStatus[tabId].next = null;
-        } else if (message.done) {
-          stopBot(tabId);
-        }
-      });
+        });
+      }
     }
   });
 });
