@@ -49,6 +49,7 @@ function goToCheckout() {
 }
 
 function manageCheckoutResponse() {
+  if (!$('#confirmation:visible').length) return;
   if ($('.failed').length)
     return port.postMessage(createMessageBody({ error: 'CC_DECLINED' }));
   else if (isSoldOut())
