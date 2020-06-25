@@ -22,13 +22,13 @@ function transformProductSection(section) {
 function createRequestListeners(tabId) {
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     botStatus[tabId].next = { findProduct: true, keyword: botStatus[tabId].config.product.keyword };
   }, { urls: [`https://www.supremenewyork.com/shop/all/${botStatus[tabId].config.product.section}`] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     if (r.url.indexOf('?') != -1) {
       sendMessage(botStatus[tabId].portContentScript, { selectSize: true, sizes: botStatus[tabId].config.product.sizes });
     } else {
@@ -38,13 +38,13 @@ function createRequestListeners(tabId) {
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
   }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     botStatus[tabId].next = {
       placeOrder: true,
       billing: botStatus[tabId].config.billing,
@@ -55,25 +55,25 @@ function createRequestListeners(tabId) {
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     botStatus[tabId].next = { start: true, section: botStatus[tabId].config.product.section };
   }, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
   }, { urls: ['https://www.supremenewyork.com/checkout/*/status.json'] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
   }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
-    if (!botStatus[tabId].start) return;
+    if (!botStatus.start) return;
     stopBot(tabId);
   }, { urls: ['*://www.paypal.com/**'] }, []);
 }
@@ -98,9 +98,28 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.storage.local.get('suprome', (_config) => {
   let config = _config.suprome;
   let portPopup; // Used to store communication port between popup and background
-  let profileGlobalIndex = 0;
 
   const stopBot = (tabId) => botStatus[tabId].start = false;
+  const runTask = (search, searchMap) => {
+    const params = search.split(':');
+    $.get(`https://www.supremenewyork.com/shop/all/${params[0]}`)
+      .done(e => {
+        const productUrl = $($.parseHTML(e)).find(`.inner-article:contains(${params[1]})`).first().find('a');
+        if (!productUrl.length && botStatus.start === true) return setTimeout(() => { runTask(search, searchMap); }, 500);
+        else if (!productUrl.length && !botStatus.start) return;
+        for (let confCount = 0; !!searchMap[search][confCount]; confCount++) {
+          chrome.tabs.create({ url: `https://www.supremenewyork.com${productUrl[0].pathname}` }, (newTab) => {
+            botStatus = Object.assign({}, botStatus, { [newTab.id]: { start: true, colorsIndex: 0, next: null, portContentScript: null, config: searchMap[search][confCount] } });
+            setTimeout(() => stopBot(newTab.id), botStatus[newTab.id].config.extension.timeout * 1000);
+            createRequestListeners(newTab.id);
+          });
+        }
+      })
+      .fail(() => {
+        if (botStatus.start === true) return setTimeout(() => { runTask(search, searchMap); }, 2000);
+        else if (!botStatus.start) return;
+      });
+  }
 
   // Get connection links to communicate between js files
   chrome.runtime.onConnect.addListener((_port) => {
@@ -110,23 +129,14 @@ chrome.storage.local.get('suprome', (_config) => {
       portPopup.onMessage.addListener((message) => {
         if (message.start) {
           const searchMap = {}
-          config.forEach((tab) => searchMap[`${tab.product.section}:${tab.product.keyword}`] = [...(searchMap[`${tab.product.section}:${tab.product.keyword}`] || []), tab]);
-          for (const search in searchMap) {
-            const params = search.split(':');
-            $.get(`https://www.supremenewyork.com/shop/all/${params[0]}`).then(e => {
-              const productUrl = $($.parseHTML(e)).find(`.inner-article:contains(${params[1]})`).first().find('a');
-              searchMap[search].forEach((conf) => {
-                chrome.tabs.create({ url: `https://www.supremenewyork.com${productUrl[0].pathname}` }, (newTab) => {
-                  botStatus = Object.assign({}, botStatus, { [newTab.id]: { start: true, colorsIndex: 0, next: null, portContentScript: null, config: conf } });
-                  setTimeout(() => stopBot(newTab.id), botStatus[newTab.id].config.extension.timeout * 1000);
-                  createRequestListeners(newTab.id);
-                });
-              })
-            });
+          botStatus.start = true;
+          for (let i = 0; !!config[i]; i++) {
+            const { keyword, section } = config[i].product;
+            searchMap[`${section}:${keyword}`] = [...(searchMap[`${section}:${keyword}`] || []), config[i]];
           }
+          for (const search in searchMap) { runTask(search, searchMap); }
         } else if (message.stop) {
-          for (const tabId in botStatus) stopBot(tabId);
-          profileGlobalIndex = 0;
+          botStatus.start = false;
         }
       });
     } else if (_port.name === 'suprome-content_script') { // Message coming from content script

@@ -59,14 +59,6 @@ function manageCheckoutResponse() {
 }
 
 function fillFormAndOrder(billing, cc, checkoutDelay) {
-  // Once document is fully loaded, create timeout to click on "place order" button
-  $(document).ready(() => {
-    setTimeout(() => {
-      $('input.button.checkout').click();
-      $(document).unbind();
-    }, checkoutDelay);
-  });
-
   $('input[name="order[billing_name]"]').val(billing.name);
   $('input[name="order[email]"]').val(billing.email);
   $('input[name="order[tel]"]').val(billing.tel);
@@ -84,6 +76,9 @@ function fillFormAndOrder(billing, cc, checkoutDelay) {
     $('input[name="credit_card[ovv]"]').val(cc.cvv);
   }
   $('label.has-checkbox.terms').click()
+  setTimeout(() => {
+    $('input.button.checkout').click();
+  }, checkoutDelay);
 }
 
 // Calls callback on message received
