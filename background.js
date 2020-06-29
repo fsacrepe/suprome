@@ -30,7 +30,11 @@ function createRequestListeners(tabId) {
     const { tabId } = r;
     if (!botStatus.start) return;
     if (r.url.indexOf('?') != -1) {
-      sendMessage(botStatus[tabId].portContentScript, { selectSize: true, sizes: botStatus[tabId].config.product.sizes });
+      sendMessage(botStatus[tabId].portContentScript, {
+        selectSize: true,
+        sizes: botStatus[tabId].config.product.sizes,
+        quantity: botStatus[tabId].config.product.quantity
+      });
     } else {
       botStatus[tabId].next = { selectColor: true, color: botStatus[tabId].config.product.colors[0] };
     }
@@ -39,7 +43,7 @@ function createRequestListeners(tabId) {
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
     if (!botStatus.start) return;
-    sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
+    //sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
   }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {

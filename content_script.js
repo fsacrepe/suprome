@@ -44,6 +44,12 @@ function selectSize(sizes) {
     commit[0].click();
 }
 
+function selectQuantity(quantity) {
+  const quantitySelect = $('#qty');
+  if (!quantitySelect.length || !quantity) return;
+  quantitySelect.val(String(quantity));
+}
+
 function goToCheckout() {
   location.href = "https://www.supremenewyork.com/checkout/";
 }
@@ -92,6 +98,7 @@ port.onMessage.addListener((message) => {
     } else if (message.selectColor) {
       selectColor(message.color);
     } else if (message.selectSize) {
+      selectQuantity(message.quantity);
       selectSize(message.sizes);
     } else if (message.goToCheckout) {
       goToCheckout();

@@ -75,6 +75,7 @@ const saveTab = (index = -1) => {
     keyword: $(`${selector} #productKeyword`).val(),
     sizes: colorAndSizeBuffer[bufferProperty]['sizes'],
     colors: colorAndSizeBuffer[bufferProperty]['colors'],
+    quantity: $(`${selector} #productQuantity`).val(),
   };
   const extension = {
     timeout: Number($(`${selector} #extensionTimeout`).val()),
@@ -134,6 +135,7 @@ const setTabData = (selector, tab = null) => {
   $(`${selector} .profileSelection`).val(!!tab ? tab.profile : '');
   $(`${selector} #productSection`).val(!!tab ? tab.product.section : '');
   $(`${selector} #productKeyword`).val(!!tab ? tab.product.keyword : '');
+  $(`${selector} #productQuantity`).val(!!tab ? tab.product.quantity : '');
   $(`${selector} #extensionTimeout`).val(!!tab ? tab.extension.timeout : '');
   $(`${selector} #extensionCheckoutDelay`).val(!!tab ? tab.extension.checkoutDelay : '');
   $(`${selector} #extensionCheckoutDelayIncrease`).val(!!tab ? tab.extension.checkoutDelayIncrease : '');
