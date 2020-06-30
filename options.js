@@ -16,7 +16,7 @@ const connectToProxy = (proxyUrl) => {
     mode: 'pac_script',
     pacScript: {
       data: "function FindProxyForURL(url, host) {\n" +
-      "  if (dnsDomainIs(host, '.whatismyipaddress.com') || dnsDomainIs(host, '.supremenewyork.com'))\n" +
+      "  if (dnsDomainIs(host, '.supremenewyork.com'))\n" +
       "    return 'PROXY " + proxyUrl + "';\n" +
       "  return 'DIRECT';\n" +
       "}",
@@ -26,7 +26,7 @@ const connectToProxy = (proxyUrl) => {
   chrome.proxy.settings.get({}, (oldConfig) => {
     chrome.proxy.settings.set({value: proxyConfig, scope: 'regular'}, () => {
       chrome.tabs.create({
-        url: 'https://whatismyipaddress.com',
+        url: 'https://www.supremenewyork.com',
         active: true,
       }, (tab) => {
         chrome.tabs.onRemoved.addListener((tabId) => {

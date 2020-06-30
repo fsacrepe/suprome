@@ -43,7 +43,7 @@ function createRequestListeners(tabId) {
   chrome.webRequest.onCompleted.addListener((r) => {
     const { tabId } = r;
     if (!botStatus.start) return;
-    //sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
+    sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
   }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
 
   chrome.webRequest.onCompleted.addListener((r) => {
