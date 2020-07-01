@@ -109,7 +109,7 @@ chrome.storage.local.get('suprome', (_config) => {
     $.get(`https://www.supremenewyork.com/shop/all/${params[0]}`)
       .done(e => {
         const productUrl = $($.parseHTML(e)).find(`.inner-article:contains(${params[1]})`).first().find('a');
-        if (!productUrl.length && botStatus.start === true) return setTimeout(() => { runTask(search, searchMap); }, 500);
+        if (!productUrl.length && botStatus.start === true) return setTimeout(() => { runTask(search, searchMap); }, 100);
         else if (!productUrl.length && !botStatus.start) return;
         for (let confCount = 0; !!searchMap[search][confCount]; confCount++) {
           chrome.tabs.create({ url: `https://www.supremenewyork.com${productUrl[0].pathname}` }, (newTab) => {

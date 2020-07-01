@@ -38,15 +38,6 @@ function createMonitorInterval(interval) {
   }, interval);
 }
 
-chrome.runtime.onConnect.addListener((_port) => {
-  if (_port.name === 'suprome-popup') {
-    _port.onMessage.addListener((msg) => {
-      if (msg.start) setRestockMonitorStatus(false);
-      else if (msg.stop) setRestockMonitorStatus(true);
-    });
-  }
-});
-
 chrome.storage.onChanged.addListener((changes) => {
   if (changes['suprome-restock']) {
     clearInterval(monitorInterval);
