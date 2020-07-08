@@ -8,6 +8,10 @@ function createMessageBody(content) {
   };
 }
 
+function isSoldOut() {
+  return $('.out_of_stock').length > 0;
+}
+
 function goToProductSection(section) {
   location.href = `https://www.supremenewyork.com/shop/all/${section}`;
 }
@@ -19,7 +23,7 @@ function selectProductFromAll(keyword) {
 }
 
 function selectColor(color) {
-  const foundColor = $(`a[data-style-name="${color}"][data-sold-out="false"]`);
+  const foundColor = color ? $(`a[data-style-name*="${color}"][data-sold-out="false"]`) : $('a[data-sold-out="false"]');
   if (!foundColor.length) return port.postMessage(createMessageBody({ error: 'COLOR_SOLD_OUT' }));
   foundColor[0].click();
 }
@@ -45,8 +49,11 @@ function goToCheckout() {
 }
 
 function manageCheckoutResponse() {
+  if (!$('#confirmation:visible').length) return;
   if ($('.failed').length)
     return port.postMessage(createMessageBody({ error: 'CC_DECLINED' }));
+  else if (isSoldOut())
+    return port.postMessage(createMessageBody({ error: 'PRODUCT_SOLD_OUT' }));
   else
     return port.postMessage(createMessageBody({ done: true }));
 }
@@ -94,6 +101,7 @@ port.onMessage.addListener((message) => {
     } else if (message.goToCheckout) {
       goToCheckout();
     } else if (message.placeOrder) {
+      if (isSoldOut()) return port.postMessage(createMessageBody({ error: 'PRODUCT_SOLD_OUT' }));
       fillFormAndOrder(message.billing, message.cc, message.checkoutDelay);
     } else if (message.checkoutResponse) {
       manageCheckoutResponse();
@@ -102,3 +110,53 @@ port.onMessage.addListener((message) => {
     }
   }
 });
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.sender === 'cookies') {
+    if (message.inject) {
+      injectSenderCode(message.tabId);
+      injectCode(message.tabId);
+    }
+  }
+})
+
+const injectCode = (tabId) => {
+  const script = document.createElement('script');
+  script.textContent = `
+    $('body').append('<p id="suprome" hidden></p>');
+    document.tempCookies = localStorage.getItem('suprome_${tabId}') || document.cookie;
+    document.__defineGetter__('cookie', () => document.tempCookies);
+    document.__defineSetter__('cookie', c => {
+      let cookies = '';
+      const buildCookieObj = (cookies) => {
+        const finalObj = {};
+        cookies.split(';').map(cookie => {
+          const split = cookie.split('=').map(a => a.trim());
+          if (split.length !== 2 || split[0].indexOf(\'@@\') === 0) return;
+          finalObj[split[0]] = split[1];
+        });
+        return finalObj;
+      };
+      const currCookies = buildCookieObj(document.tempCookies);
+      const newCookie = c.split(';')[0].split('=');
+      currCookies[newCookie[0]] = newCookie[1];
+      for (let cook in currCookies) {
+        cookies = \`\$\{cookies\}\$\{cook\}=\$\{currCookies[cook]\}; \`;
+      }
+      document.tempCookies = cookies;
+      localStorage.setItem('supreme_${tabId}', document.tempCookies);
+      $('#suprome').text(document.tempCookies);
+      window.onbeforeunload = () => localStorage.removeItem('supreme_${tabId}');
+    });
+  `;
+  document.head.appendChild(script);
+}
+
+const injectSenderCode = (tabId) => {
+  setInterval(() => {
+    let internalCookie = $('#suprome');
+    if (Object.keys(internalCookie).length) {
+      chrome.runtime.sendMessage(null, { sender: 'content_script', cookie: internalCookie.text(), tabId });
+    }
+  }, 500);
+}
