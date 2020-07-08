@@ -1,4 +1,5 @@
 let botStatus = {};
+
 const ERRORS = {
   PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
   COLOR_SOLD_OUT: 'COLOR_SOLD_OUT',
@@ -6,6 +7,20 @@ const ERRORS = {
   PRODUCT_SOLD_OUT: 'PRODUCT_SOLD_OUT',
   CC_DECLINED: 'CC_DECLINED',
 };
+
+const productSectionURLs = [
+  'https://www.supremenewyork.com/shop/jackets',
+  'https://www.supremenewyork.com/shop/shirts',
+  'https://www.supremenewyork.com/shop/tops_sweaters',
+  'https://www.supremenewyork.com/shop/sweatshirts',
+  'https://www.supremenewyork.com/shop/pants',
+  'https://www.supremenewyork.com/shop/t-shirts',
+  'https://www.supremenewyork.com/shop/hats',
+  'https://www.supremenewyork.com/shop/bags',
+  'https://www.supremenewyork.com/shop/accessories',
+  'https://www.supremenewyork.com/shop/shoes',
+  'https://www.supremenewyork.com/shop/skate',
+];
 
 function sendMessage(port, message) {
   port.postMessage({ sender: 'background', ...message });
@@ -19,109 +34,89 @@ function transformProductSection(section) {
   return section;
 }
 
-function createRequestListeners(tabId) {
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    botStatus[tabId].next = { findProduct: true, keyword: botStatus[tabId].config.product.keyword };
-  }, { urls: [`https://www.supremenewyork.com/shop/all/${botStatus[tabId].config.product.section}`] }, []);
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  if (r.url.indexOf('?') != -1) {
+    sendMessage(botStatus[tabId].portContentScript, {
+      selectSize: true,
+      sizes: botStatus[tabId].config.product.sizes,
+      quantity: botStatus[tabId].config.product.quantity
+    });
+  } else {
+    botStatus[tabId].next = { selectColor: true, color: botStatus[tabId].config.product.colors[0] };
+  }
+}, { urls: productSectionURLs.map(url => `${transformProductSection(url)}/*/*`) }, []);
 
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    if (r.url.indexOf('?') != -1) {
-      sendMessage(botStatus[tabId].portContentScript, {
-        selectSize: true,
-        sizes: botStatus[tabId].config.product.sizes,
-        quantity: botStatus[tabId].config.product.quantity
-      });
-    } else {
-      botStatus[tabId].next = { selectColor: true, color: botStatus[tabId].config.product.colors[0] };
-    }
-  }, { urls: [`https://www.supremenewyork.com/shop/${transformProductSection(botStatus[tabId].config.product.section)}/*/*`] }, []);
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
+}, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
 
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
-  }, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  botStatus[tabId].next = {
+    placeOrder: true,
+    billing: botStatus[tabId].config.billing,
+    cc: botStatus[tabId].config.cc,
+    checkoutDelay: botStatus[tabId].config.extension.checkoutDelay,
+  };
+}, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
 
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    botStatus[tabId].next = {
-      placeOrder: true,
-      billing: botStatus[tabId].config.billing,
-      cc: botStatus[tabId].config.cc,
-      checkoutDelay: botStatus[tabId].config.extension.checkoutDelay,
-    };
-  }, { urls: [`https://www.supremenewyork.com/checkout/`] }, []);
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  botStatus[tabId].next = { start: true, section: botStatus[tabId].config.product.section };
+}, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
 
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    botStatus[tabId].next = { start: true, section: botStatus[tabId].config.product.section };
-  }, { urls: ['https://www.supremenewyork.com/shop/cart*'] }, []);
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
+}, { urls: ['https://www.supremenewyork.com/checkout/*/status.json'] }, []);
 
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
-  }, { urls: ['https://www.supremenewyork.com/checkout/*/status.json'] }, []);
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
+}, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
 
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
-  }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
-
-  chrome.webRequest.onCompleted.addListener((r) => {
-    const { tabId } = r;
-    if (!botStatus.start) return;
-    stopBot(tabId);
-  }, { urls: ['*://www.paypal.com/**'] }, []);
-}
-
-// Used to set extension's icon in greyscale if not on supremenewyork.com
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
-    chrome.declarativeContent.onPageChanged.addRules([
-      {
-        conditions: [
-          new chrome.declarativeContent.PageStateMatcher({
-            pageUrl: { hostEquals: 'www.supremenewyork.com', schemes: ['https'] }
-          })
-        ],
-        actions: [ new chrome.declarativeContent.ShowPageAction() ]
-      }
-    ]);
-  });
-});
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  stopBot(tabId);
+}, { urls: ['*://www.paypal.com/**'] }, []);
 
 // Get config first
 chrome.storage.local.get('suprome', (_config) => {
   let config = _config.suprome;
   let portPopup; // Used to store communication port between popup and background
 
-  const stopBot = (tabId) => botStatus[tabId].start = false;
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace !== 'local') return;
+    if (changes.suprome) config = changes.suprome.newValue;
+  });
+
+  const stopBot = (tabId) => delete botStatus[tabId];
   const runTask = (search, searchMap) => {
     const params = search.split(':');
     $.get(`https://www.supremenewyork.com/shop/all/${params[0]}`)
       .done(e => {
         const productUrl = $($.parseHTML(e)).find(`.inner-article:contains(${params[1]})`).first().find('a');
-        if (!productUrl.length && botStatus.start === true) return setTimeout(() => { runTask(search, searchMap); }, 100);
-        else if (!productUrl.length && !botStatus.start) return;
+        if (!productUrl.length && botStatus['-1']) return setTimeout(() => { runTask(search, searchMap); }, 100);
+        else if (!productUrl.length && !botStatus['-1']) return;
         for (let confCount = 0; !!searchMap[search][confCount]; confCount++) {
           chrome.tabs.create({ url: `https://www.supremenewyork.com${productUrl[0].pathname}` }, (newTab) => {
             botStatus = Object.assign({}, botStatus, { [newTab.id]: { start: true, colorsIndex: 0, next: null, portContentScript: null, config: searchMap[search][confCount] } });
             setTimeout(() => stopBot(newTab.id), botStatus[newTab.id].config.extension.timeout * 1000);
-            createRequestListeners(newTab.id);
           });
         }
       })
       .fail(() => {
-        if (botStatus.start === true) return setTimeout(() => { runTask(search, searchMap); }, 2000);
-        else if (!botStatus.start) return;
+        if (botStatus['-1']) return setTimeout(() => { runTask(search, searchMap); }, 100);
+        else if (!botStatus['-1']) return;
       });
   }
 
@@ -131,21 +126,27 @@ chrome.storage.local.get('suprome', (_config) => {
     if (_port.name === 'suprome-popup') { // Message coming from popup
       portPopup = _port;
       portPopup.onMessage.addListener((message) => {
-        if (message.start) {
+        if (message.start && !message.configId) {
           const searchMap = {}
-          botStatus.start = true;
+          if (!botStatus['-1']) botStatus = Object.assign({}, botStatus, { ['-1']: {}});
           for (let i = 0; !!config[i]; i++) {
             const { keyword, section } = config[i].product;
             searchMap[`${section}:${keyword}`] = [...(searchMap[`${section}:${keyword}`] || []), config[i]];
           }
           for (const search in searchMap) { runTask(search, searchMap); }
-        } else if (message.stop) {
-          botStatus.start = false;
+        } else if (message.start && message.configId) {
+          const { keyword, section } = config[message.configId].product;
+          if (!botStatus['-1']) botStatus = Object.assign({}, botStatus, { ['-1']: {}});
+          runTask(`${section}:${keyword}`, { [`${section}:${keyword}`]: [config[message.configId]] });
+        } else if (message.stop && !message.tabId) {
+          for (const tabId in botStatus) stopBot(tabId);
+        } else if (message.stop && message.tabId) {
+          stopBot(message.tabId);
         }
       });
     } else if (_port.name === 'suprome-content_script') { // Message coming from content script
       const tabId = _port.sender.tab.id;
-      if (botStatus[tabId]) {
+      if (tabId > -1 && botStatus[tabId]) {
         botStatus[tabId].portContentScript = _port;
         botStatus[tabId].portContentScript.onMessage.addListener((message) => {
           if (message.error === ERRORS.COLOR_SOLD_OUT) {
@@ -167,7 +168,7 @@ chrome.storage.local.get('suprome', (_config) => {
             sendMessage(botStatus[tabId].portContentScript, botStatus[tabId].next);
             botStatus[tabId].next = null;
           } else if (message.done) {
-            stopBot(tabId);
+            delete botStatus[tabId];
           }
         });
       }
