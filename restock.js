@@ -25,10 +25,10 @@ function createMonitorInterval(interval) {
       const newState = {};
       log = updatedConfig['suprome-restock'].log;
       lastState = updatedConfig['suprome-restock'].lastState;
-      $.get('https://supremenewyork.com/shop/all').then(e => {
+      $.get('https://www.supremenewyork.com/shop/all').then(e => {
         const notSoldout = $($.parseHTML(e)).find('article a:not(:has(.sold_out_tag))');
         notSoldout.each(index => {
-          const href = `https://supremenewyork.com${notSoldout[index].pathname}`;
+          const href = `https://www.supremenewyork.com${notSoldout[index].pathname}`;
           if (Object.keys(lastState).length && !lastState[href]) promises.push(href);
           newState[href] = {};
         });
@@ -37,15 +37,6 @@ function createMonitorInterval(interval) {
     });
   }, interval);
 }
-
-chrome.runtime.onConnect.addListener((_port) => {
-  if (_port.name === 'suprome-popup') {
-    _port.onMessage.addListener((msg) => {
-      if (msg.start) setRestockMonitorStatus(false);
-      else if (msg.stop) setRestockMonitorStatus(true);
-    });
-  }
-});
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes['suprome-restock']) {

@@ -44,6 +44,12 @@ function selectSize(sizes) {
     commit[0].click();
 }
 
+function selectQuantity(quantity) {
+  const quantitySelect = $('#qty');
+  if (!quantitySelect.length || !quantity) return;
+  quantitySelect.val(String(quantity));
+}
+
 function goToCheckout() {
   location.href = "https://www.supremenewyork.com/checkout/";
 }
@@ -59,14 +65,6 @@ function manageCheckoutResponse() {
 }
 
 function fillFormAndOrder(billing, cc, checkoutDelay) {
-  // Once document is fully loaded, create timeout to click on "place order" button
-  $(document).ready(() => {
-    setTimeout(() => {
-      $('input.button.checkout').click();
-      $(document).unbind();
-    }, checkoutDelay);
-  });
-
   $('input[name="order[billing_name]"]').val(billing.name);
   $('input[name="order[email]"]').val(billing.email);
   $('input[name="order[tel]"]').val(billing.tel);
@@ -84,6 +82,9 @@ function fillFormAndOrder(billing, cc, checkoutDelay) {
     $('input[name="credit_card[ovv]"]').val(cc.cvv);
   }
   $('label.has-checkbox.terms').click()
+  setTimeout(() => {
+    $('input.button.checkout').click();
+  }, checkoutDelay);
 }
 
 // Calls callback on message received
@@ -97,6 +98,7 @@ port.onMessage.addListener((message) => {
     } else if (message.selectColor) {
       selectColor(message.color);
     } else if (message.selectSize) {
+      selectQuantity(message.quantity);
       selectSize(message.sizes);
     } else if (message.goToCheckout) {
       goToCheckout();
