@@ -42,7 +42,7 @@ function transformProductSection(section) {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(['suprome-v2', 'suprome-profiles-v2', 'suprome-tabs-v2'], s => {
-    if (!Object.keys(storage).length) {
+    if (!Object.keys(s).length) {
       chrome.storage.local.set({
         'suprome-v2': [],
         'suprome-profiles-v2': {},
@@ -104,12 +104,6 @@ chrome.webRequest.onCompleted.addListener((r) => {
   sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
 }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
 
-chrome.webRequest.onCompleted.addListener((r) => {
-  const { tabId } = r;
-  if (!Object.keys(botStatus).length) return;
-  stopBot(tabId);
-}, { urls: ['*://www.paypal.com/**'] }, []);
-
 // Get config first
 chrome.storage.local.get('suprome-v2', (_config) => {
   let config = _config['suprome-v2'];
@@ -121,7 +115,6 @@ chrome.storage.local.get('suprome-v2', (_config) => {
   });
 
   const stopBot = (tabId) => {
-    setTabStatus(botStatus[tabId]?.config?.tabUUID, TAB_STATUS.STOPPED);
     delete botStatus[tabId];
   }
   const runTask = (search, searchMap) => {
@@ -164,7 +157,6 @@ chrome.storage.local.get('suprome-v2', (_config) => {
           for (let i = 0; !!config[i]; i++) {
             const { keyword, section } = config[i].product;
             searchMap[`${section}:${keyword}`] = [...(searchMap[`${section}:${keyword}`] || []), config[i]];
-            setTabStatus(config[i].tabUUID, TAB_STATUS.SEARCHING_PRODUCT);
           }
           for (const search in searchMap) { runTask(search, searchMap); }
         } else if (message.start && message.configId) {

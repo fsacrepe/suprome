@@ -9,12 +9,12 @@ function createNotification(name, color, image) {
     iconUrl: image,
     title: 'Restock Alert!',
     message: `${name} (${color})`
-  }, () => {});
+  });
 }
 
 function setRestockMonitorStatus(enabled) {
   chrome.storage.local.get('suprome-restock-v2', config => {
-    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { enabled }) }, () => {});
+    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { enabled }) });
   });
 }
 
@@ -32,7 +32,7 @@ function createMonitorInterval(interval) {
           if (Object.keys(lastState).length && !lastState[href]) promises.push(href);
           newState[href] = {};
         });
-        chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, updatedConfig['suprome-restock-v2'], { lastState: newState}) }, _ => {});
+        chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, updatedConfig['suprome-restock-v2'], { lastState: newState }) });
       });
     });
   }, interval);
@@ -51,7 +51,7 @@ setInterval(() => {
       const productSmallImage = `https:${prod.find('a.selected > img')[0].attributes['src'].value}`;
       createNotification(productName, productColor, productSmallImage);
       chrome.storage.local.get('suprome-restock-v2-logs', config => {
-        chrome.storage.local.set({'suprome-restock-v2-logs': [{productName, productColor, productImage, productUrl, date: now}, ...(config['suprome-restock-v2-logs'] || [])]}, () => {});
+        chrome.storage.local.set({'suprome-restock-v2-logs': [{productName, productColor, productImage, productUrl, date: now}, ...(config['suprome-restock-v2-logs'] || [])]});
       });
     });
   }

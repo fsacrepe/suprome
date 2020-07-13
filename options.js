@@ -249,14 +249,14 @@ const clearMonitorHistory = () => {
 
 const changeMonitorState = () => {
   chrome.storage.local.get('suprome-restock-v2', config => {
-    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { enabled: !config['suprome-restock-v2'].enabled })}, () => {});
+    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { enabled: !config['suprome-restock-v2'].enabled })});
   });
 }
 
 const setMonitorConfig = () => {
   const restockMonitorDelay = Number($('#restockMonitorDelay').val());
   chrome.storage.local.get('suprome-restock-v2', config => {
-    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { restockMonitorDelay })}, () => {});
+    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { restockMonitorDelay })});
   });
 }
 
@@ -375,6 +375,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   } else if (changes['suprome-profiles-v2']) {
     initProfiles();
     initProfileSelect();
+    compileConfig();
   }
   else if (changes['suprome-proxy-v2']) initProxyList();
   else if (changes['suprome-restock-v2']) initMonitorConfig();

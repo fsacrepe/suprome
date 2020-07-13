@@ -3,6 +3,8 @@ const cookiesPerTab = {};
 function updateCookies(tabId, responseHeaders) {
   return responseHeaders.map(header => {
     if (header.name.toLowerCase() === 'set-cookie') {
+      const split = header.value.split('=').map(a => a.trim());
+      chrome.tabs.sendMessage(tabId, { sender: 'cookies', cookie: { [split[0]]: split[1] }, tabId });
       return { name: 'set-cookie', value: `@@${tabId}_${header.value}`};
     }
     return header;
@@ -12,19 +14,17 @@ function updateCookies(tabId, responseHeaders) {
 function buildCookies(tabId, requestHeaders, browserCookies = null) {
   return requestHeaders.map(header => {
     if (header.name === 'Cookie') {
-      let obj = {};
-      let value = '';
-      let browserSplit;
-      if (browserCookies) browserSplit = header.value.split(';').map(s => s.trim());
-      const requestSplit = header.value.split(';').map(s => s.trim());
-      const originalCookies = (browserSplit || requestSplit).filter(s => s.indexOf('@@') != 0);
-      const tabCookies = requestSplit.filter(s => s.indexOf(`@@${tabId}_`) === 0).map(s => s.slice(`@@${tabId}_`.length));
-      const allCookies = tabCookies.concat(originalCookies);
-      allCookies.forEach((cookie) => { const cookieSplit = cookie.split('='); obj[cookieSplit[0]] = cookieSplit[1]});
-      for (const prop in obj) {
-        value += `${prop}=${obj[prop]}; `;
-      }
-      return { name: 'Cookie', value };
+      const requestCookies = {};
+      let requestCookiesString = '';
+      for (let cookieName in browserCookies) requestCookies[cookieName] = browserCookies[cookieName];
+      header.value.split(';').forEach((cookies) => {
+        const split = cookies.split('=').map(s => s.trim());
+        if (split[0].indexOf(`@@${tabId}`) === 0) requestCookies[split[0].substring(3+String(tabId).length, split[0].length)] = split[1];
+        else if (split[0].indexOf('@@') === 0) return;
+        else requestCookies[split[0]] = split[1];
+      });
+      for (let cookieName in requestCookies) requestCookiesString += `${cookieName}=${requestCookies[cookieName]}; `;
+      return { name: 'Cookie', value: requestCookiesString };
     }
     return header;
   });
@@ -52,6 +52,6 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.sender === 'content_script' && message.cookie) {
-    cookiesPerTab[message.tabId] = message.cookie;
+    cookiesPerTab[message.tabId] = JSON.parse(message.cookie);
   }
 });

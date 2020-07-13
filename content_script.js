@@ -116,8 +116,15 @@ port.onMessage.addListener((message) => {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.sender === 'cookies') {
     if (message.inject) {
-      injectSenderCode(message.tabId);
+      window.addEventListener('message', (message) => {
+        const parse = JSON.parse(message.data);
+        if (parse?.newCookie) return;
+        delete parse.newCookie;
+        chrome.runtime.sendMessage(null, { sender: 'content_script', cookie: message.data, tabId: message.tabId });
+      });
       injectCode(message.tabId);
+    } else if (message.cookie) {
+      window.postMessage(JSON.stringify({ newCookie: { ...message.cookie } }), window.location.href);
     }
   }
 })
@@ -125,40 +132,37 @@ chrome.runtime.onMessage.addListener((message) => {
 const injectCode = (tabId) => {
   const script = document.createElement('script');
   script.textContent = `
-    $('body').append('<p id="suprome" hidden></p>');
-    document.tempCookies = localStorage.getItem('suprome_${tabId}') || document.cookie;
-    document.__defineGetter__('cookie', () => document.tempCookies);
-    document.__defineSetter__('cookie', c => {
+  (() => {
+    let tempCookies = {};
+    const buildCookies = (cookies) => {
+      const finalObj = {};
+      cookies.split(';').forEach(cookie => {
+        const split = cookie.split('=').map(a => a.trim());
+        if (split[0].indexOf('@@${tabId}') === 0) finalObj[split[0].substring(3+String(${tabId}).length, split[0].length)] = split[1];
+        else if (split[0].indexOf('@@') === 0) return;
+        else finalObj[split[0]] = split[1];
+      });
+      return finalObj;
+    }
+    if (localStorage.getItem('suprome_${tabId}')) tempCookies = JSON.parse(localStorage.getItem('suprome_${tabId}'));
+    else tempCookies = buildCookies(document.cookie);
+    document.__defineGetter__('cookie', () => {
       let cookies = '';
-      const buildCookieObj = (cookies) => {
-        const finalObj = {};
-        cookies.split(';').map(cookie => {
-          const split = cookie.split('=').map(a => a.trim());
-          if (split.length !== 2 || split[0].indexOf(\'@@\') === 0) return;
-          finalObj[split[0]] = split[1];
-        });
-        return finalObj;
-      };
-      const currCookies = buildCookieObj(document.tempCookies);
-      const newCookie = c.split(';')[0].split('=');
-      currCookies[newCookie[0]] = newCookie[1];
-      for (let cook in currCookies) {
-        cookies = \`\$\{cookies\}\$\{cook\}=\$\{currCookies[cook]\}; \`;
-      }
-      document.tempCookies = cookies;
-      localStorage.setItem('supreme_${tabId}', document.tempCookies);
-      $('#suprome').text(document.tempCookies);
-      window.onbeforeunload = () => localStorage.removeItem('supreme_${tabId}');
+      for (let cookie in tempCookies) cookies += \`\${cookie}=\${tempCookies[cookie]}; \`;
+      return cookies;
     });
+    document.__defineSetter__('cookie', c => {
+      const newCookie = c.split(';')[0].split('=');
+      if (!newCookie[1]) delete tempCookies[newCookie[0]];
+      else tempCookies[newCookie[0]] = newCookie[1];
+      localStorage.setItem('supreme_${tabId}', JSON.stringify(tempCookies));
+      window.postMessage(JSON.stringify(tempCookies), window.location.href);
+    });
+    window.addEventListener('message', (a) => {
+      const parse = JSON.parse(a.data);
+      if (parse?.newCookie) Object.assign(tempCookies, parse.newCookie);
+    });
+  })()
   `;
   document.head.appendChild(script);
-}
-
-const injectSenderCode = (tabId) => {
-  setInterval(() => {
-    let internalCookie = $('#suprome');
-    if (Object.keys(internalCookie).length) {
-      chrome.runtime.sendMessage(null, { sender: 'content_script', cookie: internalCookie.text(), tabId });
-    }
-  }, 500);
 }
