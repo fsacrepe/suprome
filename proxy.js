@@ -29,4 +29,4 @@ function setProxyConfig() {
   });
 }
 
-// (() => {setProxyConfig();})();
+setProxyConfig();

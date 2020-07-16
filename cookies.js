@@ -55,3 +55,15 @@ chrome.runtime.onMessage.addListener((message) => {
     cookiesPerTab[message.tabId] = JSON.parse(message.cookie);
   }
 });
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.cookies.getAll({ url: 'https://www.supremenewyork.com' }, cookies => {
+    console.log('All Cookies for supremenewyork.com', cookies)
+    const matchingCookiesNames = [];
+    cookies.forEach((cookie) => {
+      if (cookie.name.indexOf(`@@${tabId}_`) === 0) matchingCookiesNames.push(cookie.name);
+    });
+    console.log(`Matching cookies for tab ${tabId}`, matchingCookiesNames);
+    matchingCookiesNames.forEach(name => chrome.cookies.remove({ name, url: 'https://www.supremenewyork.com' }));
+  });
+});
