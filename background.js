@@ -49,11 +49,11 @@ chrome.runtime.onInstalled.addListener(() => {
         'suprome-tabs-v2': {},
         'suprome-restock-v2': { enabled: false, restockMonitorDelay: 1000, lastState: {} },
         'suprome-restock-v2-logs': [],
-        'suprome-proxy-v2': []
+        'suprome-proxy-v2': [],
+        'suprome-licence': null,
       });
     }
   });
-});
 
 chrome.webRequest.onCompleted.addListener((r) => {
   const { tabId } = r;
@@ -197,6 +197,12 @@ chrome.storage.local.get('suprome-v2', (_config) => {
           }
         });
       }
+    } else if (_port.name === 'suprome-options') {
+      _port.onMessage.addListener((message) => {
+        if (message.login) {
+          loginUser(message.login.email, message.login.password);
+        }
+      });
     }
   });
 });

@@ -1,3 +1,4 @@
+const port = chrome.runtime.connect({ name: 'suprome-options' });
 let colorAndSizeBuffer = {
   create: {
     sizes: [],
@@ -342,16 +343,33 @@ const compileConfig = () => {
   });
 }
 
+const setConfigVisibility = (licence = null) => {
+  const shouldShow = !!licence?.token;
+  $('#suprome-config').prop('hidden', !shouldShow);
+  $('#suprome-login').prop('hidden', shouldShow);
+}
+
 const initAll = () => {
-  initProfileSelect();
-  initProfiles();
-  initTabs();
-  initProxyList();
-  initMonitorConfig();
-  chrome.storage.local.get(['suprome-restock-v2', 'suprome-restock-v2-logs'], storage => {
-    initRestockCards(storage['suprome-restock-v2-logs']);
+  chrome.storage.local.get(['suprome-licence', 'suprome-restock-v2', 'suprome-restock-v2-logs'], storage => {
+    if (storage['suprome-licence']?.token) {
+      setConfigVisibility(storage['suprome-licence']);
+      initProfileSelect();
+      initProfiles();
+      initTabs();
+      initProxyList();
+      initMonitorConfig();
+      initRestockCards(storage['suprome-restock-v2-logs']);
+    } else {
+      setConfigVisibility();
+    }
   });
 };
+
+const connectUser = () => {
+  const email = $('#inputEmail').val();
+  const password = $('#inputPassword').val();
+  port.postMessage({ sender: 'options', login: { email, password }});
+}
 
 $('#submitProfileBtn').click(() => createProfile());
 $('#createTabBtn').click(() => saveTab());
@@ -365,11 +383,14 @@ $('#proxyListConnectBtn').click(() => {connectToProxy($('#newProxy').val())});
 $('#clearMonitorHistoryBtn').click(clearMonitorHistory);
 $('#restockMonitorToggle').click(changeMonitorState);
 $('#saveRestockMonitorBtn').click(setMonitorConfig);
+$('#loginBtn').click(connectUser);
 $(document).ready(initAll);
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace !== 'local') return;
-  if (changes['suprome-tabs-v2']) {
+  if (changes['suprome-licence']) {
+    setConfigVisibility(changes['suprome-licence'].newValue);
+  } else if (changes['suprome-tabs-v2']) {
     initTabs();
     compileConfig();
   } else if (changes['suprome-profiles-v2']) {
