@@ -58,6 +58,15 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.webRequest.onCompleted.addListener((r) => {
   const { tabId } = r;
   if (!Object.keys(botStatus).length) return;
+  botStatus[tabId].next = {
+    findProduct: true, 
+    keyword: botStatus[tabId].config.product.keyword,
+  };
+}, { urls: productSectionURLs }, []);
+
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
   if (r.url.indexOf('?') != -1) {
     sendMessage(botStatus[tabId].portContentScript, {
       selectSize: true,
@@ -186,7 +195,6 @@ chrome.storage.local.get('suprome-v2', (_config) => {
             botStatus[tabId].colorsIndex = 0;
             setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
           } else if (message.error === ERRORS.CC_DECLINED || message.error === ERRORS.PRODUCT_SOLD_OUT) {
-            botStatus[tabId].colorsIndex = 0;
             botStatus[tabId].config.extension.checkoutDelay += botStatus[tabId].config.extension.checkoutDelayIncrease || 0;
             sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
           } else if (message.loaded) {

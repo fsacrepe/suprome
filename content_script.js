@@ -118,9 +118,8 @@ chrome.runtime.onMessage.addListener((message) => {
     if (message.inject) {
       window.addEventListener('message', (message) => {
         const parse = JSON.parse(message.data);
-        if (parse?.newCookie) return;
-        delete parse.newCookie;
-        chrome.runtime.sendMessage(null, { sender: 'content_script', cookie: message.data, tabId: message.tabId });
+        if (!parse?.tabId) return;
+        chrome.runtime.sendMessage(null, { sender: 'content_script', cookie: parse.cookie, tabId: parse.tabId });
       });
       injectCode(message.tabId);
     } else if (message.cookie) {
@@ -156,7 +155,7 @@ const injectCode = (tabId) => {
       if (!newCookie[1]) delete tempCookies[newCookie[0]];
       else tempCookies[newCookie[0]] = newCookie[1];
       localStorage.setItem('supreme_${tabId}', JSON.stringify(tempCookies));
-      window.postMessage(JSON.stringify(tempCookies), window.location.href);
+      window.postMessage(JSON.stringify({ tabId: ${tabId}, cookie: c.split(';')[0]}), window.location.href);
     });
     window.addEventListener('message', (a) => {
       const parse = JSON.parse(a.data);
