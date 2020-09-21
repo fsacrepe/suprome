@@ -5,10 +5,14 @@ let colorAndSizeBuffer = {
   }
 };
 
-function camelize(str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function(word, index) {
-    return index === 0 ? word.toLowerCase() : word.toUpperCase();
-  }).replace(/\s+/g, '');
+function createUUID(){
+  var dt = new Date().getTime();
+  var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = (dt + Math.random()*16)%16 | 0;
+      dt = Math.floor(dt/16);
+      return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+  });
+  return uuid;
 }
 
 const connectToProxy = (proxyUrl) => {
@@ -30,15 +34,15 @@ const connectToProxy = (proxyUrl) => {
         active: true,
       }, (tab) => {
         chrome.tabs.onRemoved.addListener((tabId) => {
-          if (tabId === tab.id) chrome.proxy.settings.set({ value: oldConfig.value, scope: 'regular' }, () => {});
+          if (tabId === tab.id) chrome.proxy.settings.set({ value: oldConfig.value, scope: 'regular' });
         });
       });
     });
   })
 }
 
-const createProfile = () => {
-  const profileName = $('#profileName').val();
+const createProfile = (uuid = null) => {
+  const name = $('#profileName').val();
   const billing = {
     name: $('#billingName').val(),
     email: $('#billingEmail').val(),
@@ -57,124 +61,22 @@ const createProfile = () => {
     year: $('#ccYear').val(),
     cvv: $('#ccCvv').val(),
   };
-  const newProfile = { [profileName]: { billing, cc } };
-  chrome.storage.local.get('suprome-profiles', (storage) => {
-    chrome.storage.local.set({ 'suprome-profiles': Object.assign({}, storage['suprome-profiles'], { ...newProfile }) }, done => {
-      initAll();
-    });
+  const profile = { [uuid || createUUID()]: { name, billing, cc } };
+  chrome.storage.local.get('suprome-profiles-v2', (storage) => {
+    chrome.storage.local.set({ 'suprome-profiles-v2': Object.assign({}, storage['suprome-profiles-v2'], { ...profile }) });
   });
 };
 
-const saveTab = (index = -1) => {
-  let selector = '#createBody';
-  let bufferProperty = index === -1 ? 'create' : `${index}`;
-  if (index !== -1) selector = `#tab-${index}`;
-  const selectedProfileName = $(`${selector} .profileSelection`).val();
-  const product = {
-    section: $(`${selector} #productSection`).val(),
-    keyword: $(`${selector} #productKeyword`).val(),
-    sizes: colorAndSizeBuffer[bufferProperty]['sizes'],
-    colors: colorAndSizeBuffer[bufferProperty]['colors'],
-    quantity: $(`${selector} #productQuantity`).val(),
-  };
-  const extension = {
-    timeout: Number($(`${selector} #extensionTimeout`).val()),
-    checkoutDelay: Number($(`${selector} #extensionCheckoutDelay`).val()),
-    checkoutDelayIncrease: Number($(`${selector} #extensionCheckoutDelayIncrease`).val()),
-    restockReloadDelay: Number($(`${selector} #extensionRestockReloadDelay`).val()),
-  };
-  chrome.storage.local.get('suprome-tabs', storage => {
-    if (index === -1) {
-      const tabs = [...(storage['suprome-tabs'] || []), { product, extension, profile: selectedProfileName }];
-      chrome.storage.local.set({ 'suprome-tabs': tabs }, initTabs);
-    } else {
-      storage['suprome-tabs'].splice(index, 1, { product, extension, profile: selectedProfileName })
-      chrome.storage.local.set({ 'suprome-tabs': storage['suprome-tabs'] }, initTabs);
-    }
-  });
-};
-
-const addToArray = (type, index = -1) => {
-  const selector = type === 'colors' ? '#productColors' : '#productSizes';
-  let property = 'create';
-  let value = $(`#createBody ${selector}`).val();
-  if (index !== -1) {
-    property = `${index}`;
-    value = $(`#tab-${index} ${selector}`).val();
-  }
-  colorAndSizeBuffer[property][type].push(value);
-  setColorsAndSizes(index);
-}
-
-const popFromArray = (type, index = -1) => {
-  let property = 'create';
-  if (index !== -1) property = `${index}`;
-  colorAndSizeBuffer[property][type].pop();
-  setColorsAndSizes(index);
-}
-
-const removeProfile = () => {
-  chrome.storage.local.get('suprome-profiles', storage => {
-    const profiles = storage['suprome-profiles'];
-    const toRemove = $('a[id^="pill"].active').html();
-    delete profiles[toRemove];
-    chrome.storage.local.set({ 'suprome-profiles': profiles }, done => {
-      initAll();
-    });
-  })
-}
-
-const removeTab = (index) => {
-  chrome.storage.local.get('suprome-tabs', storage => {
-    storage['suprome-tabs'].splice(index, 1);
-    chrome.storage.local.set({ 'suprome-tabs': storage['suprome-tabs'] }, initTabs);
+const removeProfile = (uuid) => {
+  chrome.storage.local.get('suprome-profiles-v2', storage => {
+    const profiles = storage['suprome-profiles-v2'];
+    delete profiles[uuid];
+    chrome.storage.local.set({ 'suprome-profiles-v2': profiles });
   });
 }
 
-const setTabData = (selector, tab = null) => {
-  $(`${selector} .profileSelection`).val(!!tab ? tab.profile : '');
-  $(`${selector} #productSection`).val(!!tab ? tab.product.section : '');
-  $(`${selector} #productKeyword`).val(!!tab ? tab.product.keyword : '');
-  $(`${selector} #productQuantity`).val(!!tab ? tab.product.quantity : '');
-  $(`${selector} #extensionTimeout`).val(!!tab ? tab.extension.timeout : '');
-  $(`${selector} #extensionCheckoutDelay`).val(!!tab ? tab.extension.checkoutDelay : '');
-  $(`${selector} #extensionCheckoutDelayIncrease`).val(!!tab ? tab.extension.checkoutDelayIncrease : '');
-  $(`${selector} #extensionRestockReloadDelay`).val(!!tab ? tab.extension.restockReloadDelay : '');
-  if (!!tab) {
-    const btnContainer = $(`${selector} #createTabBtn`).parent();
-    const tabIndex = $(selector).attr('data-tab-index');
-    btnContainer.html(null);
-    btnContainer.append(`<button id="removeTabBtn" class="btn btn-danger" type="button">Remove</button>`);
-    btnContainer.append(`<button id="editTabBtn" class="btn btn-primary" type="button" style="margin-left: 5px;">Save</button>`);
-    setColorsAndSizes(tabIndex);
-    $(`${selector} #editTabBtn`).click(() => saveTab(tabIndex));
-    $(`${selector} #removeTabBtn`).click(() => removeTab(tabIndex));
-    $(`${selector} #addSize`).click(() => addToArray('sizes', tabIndex));
-    $(`${selector} #popSize`).click(() => popFromArray('sizes', tabIndex));
-    $(`${selector} #addColor`).click(() => addToArray('colors', tabIndex));
-    $(`${selector} #popColor`).click(() => popFromArray('colors', tabIndex));
-  }
-}
-
-const setColorsAndSizes = (index = -1) => {
-  let selector = '#createBody';
-  let property = 'create';
-  if (index !== -1) {
-    selector = `#tab-${index}`;
-    property = index;
-  }
-  $(`${selector} #configProductColors`).html(null);
-  $(`${selector} #configProductSizes`).html(null);
-  for (const dataType in colorAndSizeBuffer[property]) {
-    colorAndSizeBuffer[property][dataType].forEach(val => {
-      if (dataType === 'colors') $(`${selector} #configProductColors`).append(`<span class="badge badge-dark">${val}</span>`);
-      if (dataType === 'sizes') $(`${selector} #configProductSizes`).append(`<span class="badge badge-dark">${val}</span>`);
-    });
-  }
-}
-
-const setProfileData = (profileName = '', profile = null) => {
-  $(`#profileName`).val(profileName);
+const setProfileData = (uuid = null, profile = null) => {
+  $(`#profileName`).val(!!profile ? profile.name : '');
   $(`#billingName`).val(!!profile ? profile.billing.name : '');
   $(`#billingEmail`).val(!!profile ? profile.billing.email : '');
   $(`#billingTel`).val(!!profile ? profile.billing.tel : '');
@@ -191,32 +93,126 @@ const setProfileData = (profileName = '', profile = null) => {
   $(`#ccCvv`).val(!!profile ? profile.cc.cvv : '');
   if (!!profile) {
     $(`#submitProfileBtn`).html('Edit Profile');
+    $(`#submitProfileBtn`).click(() => createProfile(uuid));
     $(`#removeProfileBtn`).show();
+    $(`#removeProfileBtn`).click(() => removeProfile(uuid));
   } else {
     $(`#submitProfileBtn`).html('Create Profile');
+    $(`#submitProfileBtn`).click(() => createProfile());
     $(`#removeProfileBtn`).hide();
   }
 }
 
 const initProfiles = () => {
-  chrome.storage.local.get('suprome-profiles', storage => {
+  chrome.storage.local.get('suprome-profiles-v2', storage => {
     const pillsContainer = $('#profilesPills');
     pillsContainer.html(null);
-    for (const profileName in storage['suprome-profiles']) {
-      const p = storage['suprome-profiles'][profileName];
-      const camelProfileName = camelize(profileName);
-      pillsContainer.prepend(`<a class="nav-link" id="pill${camelProfileName}" data-toggle="pill" href="#profile${camelProfileName}" role="tab" aria-selected="false">${profileName}</a>`)
-      $(`#pill${camelProfileName}`).click(() => setProfileData(profileName, p));
+    for (const uuid in storage['suprome-profiles-v2']) {
+      const p = storage['suprome-profiles-v2'][uuid];
+      pillsContainer.prepend(`<a class="nav-link" id="pill${uuid}" data-toggle="pill" href="#profile${uuid}" role="tab" aria-selected="false">${p.name}</a>`)
+      $(`#pill${uuid}`).click(() => setProfileData(uuid, p));
     }
     pillsContainer.append('<a class="nav-link active" id="pillCreateProfile" data-toggle="pill" href="#profileForm" role="tab" aria-controls="create-profile" aria-selected="true" style="margin-top: 20%;">+ New Profile</a>');
     $('#pillCreateProfile').click(() => setProfileData());
   });
 }
 
+const saveTab = (uuid = null) => {
+  let selector = '#createBody';
+  let bufferProperty = !uuid ? 'create' : `${uuid}`;
+  if (uuid) selector = `#tab-${uuid}`;
+  const profileUUID = $(`${selector} .profileSelection`).val();
+  const product = {
+    section: $(`${selector} #productSection`).val(),
+    keyword: $(`${selector} #productKeyword`).val(),
+    sizes: colorAndSizeBuffer[bufferProperty]['sizes'],
+    colors: colorAndSizeBuffer[bufferProperty]['colors'],
+    quantity: $(`${selector} #productQuantity`).val(),
+  };
+  const extension = {
+    timeout: Number($(`${selector} #extensionTimeout`).val()),
+    checkoutDelay: Number($(`${selector} #extensionCheckoutDelay`).val()),
+    checkoutDelayIncrease: Number($(`${selector} #extensionCheckoutDelayIncrease`).val()),
+    restockReloadDelay: Number($(`${selector} #extensionRestockReloadDelay`).val()),
+  };
+  chrome.storage.local.get('suprome-tabs-v2', storage => {
+    chrome.storage.local.set({ 'suprome-tabs-v2': Object.assign({}, storage['suprome-tabs-v2'], { [uuid || createUUID()]: { product, extension, profileUUID } }) });
+  });
+};
+
+const addToArray = (type, uuid = null) => {
+  const selector = type === 'colors' ? '#productColors' : '#productSizes';
+  let property = 'create';
+  let value = $(`#createBody ${selector}`).val();
+  if (uuid) {
+    property = `${uuid}`;
+    value = $(`#tab-${uuid} ${selector}`).val();
+  }
+  colorAndSizeBuffer[property][type].push(value);
+  setColorsAndSizes(uuid);
+}
+
+const popFromArray = (type, uuid = null) => {
+  let property = 'create';
+  if (uuid) property = `${uuid}`;
+  colorAndSizeBuffer[property][type].pop();
+  setColorsAndSizes(uuid);
+}
+
+const removeTab = (uuid) => {
+  chrome.storage.local.get('suprome-tabs-v2', storage => {
+    delete storage['suprome-tabs-v2'][uuid];
+    chrome.storage.local.set({ 'suprome-tabs-v2': storage['suprome-tabs-v2'] });
+  });
+}
+
+const setTabData = (selector, tab = null) => {
+  $(`${selector} .profileSelection`).val(!!tab ? tab.profileUUID : '');
+  $(`${selector} #productSection`).val(!!tab ? tab.product.section : '');
+  $(`${selector} #productKeyword`).val(!!tab ? tab.product.keyword : '');
+  $(`${selector} #productQuantity`).val(!!tab ? tab.product.quantity : '');
+  $(`${selector} #extensionTimeout`).val(!!tab ? tab.extension.timeout : '');
+  $(`${selector} #extensionCheckoutDelay`).val(!!tab ? tab.extension.checkoutDelay : '');
+  $(`${selector} #extensionCheckoutDelayIncrease`).val(!!tab ? tab.extension.checkoutDelayIncrease : '');
+  $(`${selector} #extensionRestockReloadDelay`).val(!!tab ? tab.extension.restockReloadDelay : '');
+  if (!!tab) {
+    const btnContainer = $(`${selector} #createTabBtn`).parent();
+    const tabUUID = $(selector).attr('data-tab-uuid');
+    btnContainer.html(null);
+    btnContainer.append(`<button id="removeTabBtn" class="btn btn-danger" type="button">Remove</button>`);
+    btnContainer.append(`<button id="editTabBtn" class="btn btn-primary" type="button" style="margin-left: 5px;">Save</button>`);
+    setColorsAndSizes(tabUUID);
+    $(`${selector} #editTabBtn`).click(() => saveTab(tabUUID));
+    $(`${selector} #removeTabBtn`).click(() => removeTab(tabUUID));
+    $(`${selector} #addSize`).click(() => addToArray('sizes', tabUUID));
+    $(`${selector} #popSize`).click(() => popFromArray('sizes', tabUUID));
+    $(`${selector} #addColor`).click(() => addToArray('colors', tabUUID));
+    $(`${selector} #popColor`).click(() => popFromArray('colors', tabUUID));
+  }
+}
+
+const setColorsAndSizes = (uuid = null) => {
+  let selector = '#createBody';
+  let property = 'create';
+  if (uuid) {
+    selector = `#tab-${uuid}`;
+    property = uuid;
+  }
+  $(`${selector} #configProductColors`).html(null);
+  $(`${selector} #configProductSizes`).html(null);
+  for (const dataType in colorAndSizeBuffer[property]) {
+    colorAndSizeBuffer[property][dataType].forEach(val => {
+      if (dataType === 'colors') $(`${selector} #configProductColors`).append(`<span class="badge badge-dark">${val}</span>`);
+      if (dataType === 'sizes') $(`${selector} #configProductSizes`).append(`<span class="badge badge-dark">${val}</span>`);
+    });
+  }
+}
+
 const initProfileSelect = () => {
-  chrome.storage.local.get('suprome-profiles', storage => {
-    for (const profileName in storage['suprome-profiles']) {
-      $('.profileSelection').append(`<option value="${profileName}">${profileName}</option>`);
+  $('.profileSelection').html(null);
+  chrome.storage.local.get('suprome-profiles-v2', storage => {
+    for (const uuid in storage['suprome-profiles-v2']) {
+      $('.profileSelection').append(`<option value="${uuid}">${storage['suprome-profiles-v2'][uuid].name}</option>`);
     }
   });
 }
@@ -225,49 +221,49 @@ const initTabs = () => {
   createTabSizesBuffer = [];
   createTabColorsBuffer = [];
   setTabData('#accordionCreateTask');
-  chrome.storage.local.get('suprome-tabs', storage => {
+  chrome.storage.local.get('suprome-tabs-v2', storage => {
     $('#accordionContainer').html(null);
-    if (!storage['suprome-tabs']) return;
-    storage['suprome-tabs'].forEach((tab, index) => {
+    for (const uuid in storage['suprome-tabs-v2']) {
+      const tab = storage['suprome-tabs-v2'][uuid];
       const { colors = [], sizes = [] } = tab.product
-      colorAndSizeBuffer[index] = { sizes, colors };
+      colorAndSizeBuffer[uuid] = { sizes, colors };
       const original = $('#accordionCreateTask > .card');
       original.clone().appendTo('#accordionContainer');
-      $('#accordionContainer > .card').last().attr('id', `tab-${index}`);
-      $(`#accordionContainer > #tab-${index}`).attr('data-tab-index', `${index}`);
-      $(`#accordionContainer #tab-${index} button[data-toggle="collapse"]`).attr('data-target', `#tabContent-${index}`);
-      $(`#accordionContainer > #tab-${index} > .collapse`).attr('id', `tabContent-${index}`);
-      $(`#accordionContainer > #tab-${index} > .collapse`).attr('class', `collapse hide`);
-      $(`#accordionContainer > #tab-${index} > .collapse`).attr('data-parent', '#accordionContainer');
-      $(`#tab-${index} #tab-title`).html(`Tab ${index} - [${tab.product.section}] ${tab.product.keyword}`);
-      setTabData(`#tab-${index}`, tab);
-    });
+      $('#accordionContainer > .card').last().attr('id', `tab-${uuid}`);
+      $(`#accordionContainer > #tab-${uuid}`).attr('data-tab-uuid', `${uuid}`);
+      $(`#accordionContainer #tab-${uuid} button[data-toggle="collapse"]`).attr('data-target', `#tabContent-${uuid}`);
+      $(`#accordionContainer > #tab-${uuid} > .collapse`).attr('id', `tabContent-${uuid}`);
+      $(`#accordionContainer > #tab-${uuid} > .collapse`).attr('class', `collapse hide`);
+      $(`#accordionContainer > #tab-${uuid} > .collapse`).attr('data-parent', '#accordionContainer');
+      $(`#tab-${uuid} #tab-title`).html(`[${tab.product.section}] ${tab.product.keyword}`);
+      setTabData(`#tab-${uuid}`, tab);
+    }
   });
 }
 
 const clearMonitorHistory = () => {
-  chrome.storage.local.set({ 'suprome-restock-logs': [] }, () => {
+  chrome.storage.local.set({ 'suprome-restock-v2-logs': [] }, () => {
     initRestockCards([]);
   });
 }
 
 const changeMonitorState = () => {
-  chrome.storage.local.get('suprome-restock', config => {
-    chrome.storage.local.set({ 'suprome-restock': Object.assign({}, config['suprome-restock'], { enabled: !config['suprome-restock'].enabled })}, () => {});
+  chrome.storage.local.get('suprome-restock-v2', config => {
+    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { enabled: !config['suprome-restock-v2'].enabled })});
   });
 }
 
 const setMonitorConfig = () => {
   const restockMonitorDelay = Number($('#restockMonitorDelay').val());
-  chrome.storage.local.get('suprome-restock', config => {
-    chrome.storage.local.set({ 'suprome-restock': Object.assign({}, config['suprome-restock'], { restockMonitorDelay })}, () => {});
+  chrome.storage.local.get('suprome-restock-v2', config => {
+    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { restockMonitorDelay })});
   });
 }
 
 const initMonitorConfig = () => {
-  chrome.storage.local.get('suprome-restock', config => {
-    $('#restockMonitorToggle').prop('checked', config['suprome-restock'].enabled);
-    $('#restockMonitorDelay').val(config['suprome-restock'].restockMonitorDelay);
+  chrome.storage.local.get('suprome-restock-v2', config => {
+    $('#restockMonitorToggle').prop('checked', config['suprome-restock-v2'].enabled);
+    $('#restockMonitorDelay').val(config['suprome-restock-v2'].restockMonitorDelay);
   });
 }
 
@@ -296,16 +292,16 @@ const initRestockCards = (logs) => {
 const addProxy = () => {
   const newProxyUrl = $('#newProxy').val();
   $('#newProxy').val(null);
-  chrome.storage.local.get('suprome-proxy', config => {
-    chrome.storage.local.set({ 'suprome-proxy' : [...config['suprome-proxy'] || [], newProxyUrl]}, () => {
+  chrome.storage.local.get('suprome-proxy-v2', config => {
+    chrome.storage.local.set({ 'suprome-proxy-v2' : [...config['suprome-proxy-v2'] || [], newProxyUrl]}, () => {
       initProxyList();
     });
   });
 }
 
 const removeProxy = (index) => {
-  chrome.storage.local.get('suprome-proxy', config => {
-    config['suprome-proxy'].splice(index, 1);
+  chrome.storage.local.get('suprome-proxy-v2', config => {
+    config['suprome-proxy-v2'].splice(index, 1);
     chrome.storage.local.set(config, () => {
       initProxyList();
     });
@@ -313,9 +309,9 @@ const removeProxy = (index) => {
 }
 
 const initProxyList = () => {
-  chrome.storage.local.get('suprome-proxy', config => {
+  chrome.storage.local.get('suprome-proxy-v2', config => {
     $('[id^="proxyListElement-"]').remove();
-    config['suprome-proxy'].forEach((proxy, index) => {
+    config['suprome-proxy-v2'].forEach((proxy, index) => {
       $('#proxyList').prepend(`
       <li id="proxyListElement-${index}" class="list-group-item">
         <form class="form-inline mb-0">
@@ -327,21 +323,22 @@ const initProxyList = () => {
         </form>
       </li>
       `);
-      $(`#proxyListElement-${index} #connectBtn`).click(() => {connectToProxy(config['suprome-proxy'][index]);});
+      $(`#proxyListElement-${index} #connectBtn`).click(() => {connectToProxy(config['suprome-proxy-v2'][index]);});
       $(`#proxyListElement-${index} #removeBtn`).click(() => {removeProxy(index)});
     });
   });
 }
 
 const compileConfig = () => {
-  chrome.storage.local.get(['suprome-tabs', 'suprome-profiles'], storage => {
+  chrome.storage.local.get(['suprome-tabs-v2', 'suprome-profiles-v2'], storage => {
     const compiled = [];
-    storage['suprome-tabs'].forEach(tab => {
+    for (const uuid in storage['suprome-tabs-v2']) {
+      const tab = storage['suprome-tabs-v2'][uuid];
       const { product, extension } = tab;
-      const { billing, cc } = storage['suprome-profiles'][tab.profile];
-      compiled.push({ product, extension, billing, cc });
-    });
-    chrome.storage.local.set({ 'suprome': compiled }, () => {chrome.runtime.reload();});
+      const { billing, cc } = storage['suprome-profiles-v2'][tab.profileUUID];
+      compiled.push({ tabUUID: uuid, profileUUID: tab.profileUUID, product, extension, billing, cc });
+    }
+    chrome.storage.local.set({ 'suprome-v2': compiled });
   });
 }
 
@@ -351,21 +348,12 @@ const initAll = () => {
   initTabs();
   initProxyList();
   initMonitorConfig();
-  chrome.storage.local.get(['suprome-restock', 'suprome-restock-logs'], storage => {
-    initRestockCards(storage['suprome-restock-logs']);
-    setInterval(() => {
-      if ($('#restock[class*="active"]').length) {
-        chrome.storage.local.get('suprome-restock-logs', config => {
-          initRestockCards(config['suprome-restock-logs']);
-        });
-      }
-    }, storage['suprome-restock'].restockMonitorDelay);
+  chrome.storage.local.get(['suprome-restock-v2', 'suprome-restock-v2-logs'], storage => {
+    initRestockCards(storage['suprome-restock-v2-logs']);
   });
 };
 
-$('#pillCreateProfile').click(setProfileData);
-$('#submitProfileBtn').click(createProfile);
-$('#removeProfileBtn').click(removeProfile);
+$('#submitProfileBtn').click(() => createProfile());
 $('#createTabBtn').click(() => saveTab());
 $(`#createBody #addSize`).click(() => addToArray('sizes'));
 $(`#createBody #popSize`).click(() => popFromArray('sizes'));
@@ -378,3 +366,18 @@ $('#clearMonitorHistoryBtn').click(clearMonitorHistory);
 $('#restockMonitorToggle').click(changeMonitorState);
 $('#saveRestockMonitorBtn').click(setMonitorConfig);
 $(document).ready(initAll);
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace !== 'local') return;
+  if (changes['suprome-tabs-v2']) {
+    initTabs();
+    compileConfig();
+  } else if (changes['suprome-profiles-v2']) {
+    initProfiles();
+    initProfileSelect();
+    compileConfig();
+  }
+  else if (changes['suprome-proxy-v2']) initProxyList();
+  else if (changes['suprome-restock-v2']) initMonitorConfig();
+  else if (changes['suprome-restock-v2-logs']) initRestockCards(changes['suprome-restock-v2-logs'].newValue);
+});

@@ -8,6 +8,12 @@ const ERRORS = {
   CC_DECLINED: 'CC_DECLINED',
 };
 
+const TAB_STATUS = {
+  RUNNING: 'RUNNING',
+  STOPPED: 'STOPPED',
+  SEARCHING_PRODUCT: 'SEARCHING_PRODUCT',
+};
+
 const productSectionURLs = [
   'https://www.supremenewyork.com/shop/jackets',
   'https://www.supremenewyork.com/shop/shirts',
@@ -33,6 +39,30 @@ function transformProductSection(section) {
   }
   return section;
 }
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.get(['suprome-v2', 'suprome-profiles-v2', 'suprome-tabs-v2'], s => {
+    if (!Object.keys(s).length) {
+      chrome.storage.local.set({
+        'suprome-v2': [],
+        'suprome-profiles-v2': {},
+        'suprome-tabs-v2': {},
+        'suprome-restock-v2': { enabled: false, restockMonitorDelay: 1000, lastState: {} },
+        'suprome-restock-v2-logs': [],
+        'suprome-proxy-v2': []
+      });
+    }
+  });
+});
+
+chrome.webRequest.onCompleted.addListener((r) => {
+  const { tabId } = r;
+  if (!Object.keys(botStatus).length) return;
+  botStatus[tabId].next = {
+    findProduct: true, 
+    keyword: botStatus[tabId].config.product.keyword,
+  };
+}, { urls: productSectionURLs }, []);
 
 chrome.webRequest.onCompleted.addListener((r) => {
   const { tabId } = r;
@@ -83,29 +113,25 @@ chrome.webRequest.onCompleted.addListener((r) => {
   sendMessage(botStatus[tabId].portContentScript, { checkoutResponse: true });
 }, { urls: ['https://www.supremenewyork.com/checkout.json'] }, []);
 
-chrome.webRequest.onCompleted.addListener((r) => {
-  const { tabId } = r;
-  if (!Object.keys(botStatus).length) return;
-  stopBot(tabId);
-}, { urls: ['*://www.paypal.com/**'] }, []);
-
 // Get config first
-chrome.storage.local.get('suprome', (_config) => {
-  let config = _config.suprome;
+chrome.storage.local.get('suprome-v2', (_config) => {
+  let config = _config['suprome-v2'];
   let portPopup; // Used to store communication port between popup and background
 
   chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace !== 'local') return;
-    if (changes.suprome) config = changes.suprome.newValue;
+    if (changes['suprome-v2']) config = changes['suprome-v2'].newValue;
   });
 
-  const stopBot = (tabId) => delete botStatus[tabId];
+  const stopBot = (tabId) => {
+    delete botStatus[tabId];
+  }
   const runTask = (search, searchMap) => {
     const params = search.split(':');
     $.get(`https://www.supremenewyork.com/shop/all/${params[0]}`)
       .done(e => {
         const productUrl = $($.parseHTML(e)).find(`.inner-article:contains(${params[1]})`).first().find('a');
-        if (!productUrl.length && botStatus['-1']) return setTimeout(() => { runTask(search, searchMap); }, 100);
+        if (!productUrl.length && botStatus['-1']) return setTimeout(() => { runTask(search, searchMap); }, 250);
         else if (!productUrl.length && !botStatus['-1']) return;
         for (let confCount = 0; !!searchMap[search][confCount]; confCount++) {
           chrome.tabs.create({ url: `https://www.supremenewyork.com${productUrl[0].pathname}` }, (newTab) => {
@@ -115,9 +141,17 @@ chrome.storage.local.get('suprome', (_config) => {
         }
       })
       .fail(() => {
-        if (botStatus['-1']) return setTimeout(() => { runTask(search, searchMap); }, 100);
+        if (botStatus['-1']) return setTimeout(() => { runTask(search, searchMap); }, 250);
         else if (!botStatus['-1']) return;
       });
+  }
+  const setTabStatus = (tabUUID = null, status) => {
+    if (status === TAB_STATUS.SEARCHING_PRODUCT) botStatus['-1'].push(tabUUID);
+    else if (status === TAB_STATUS.RUNNING) botStatus['-1'].slice(botStatus.indexOf(tabUUID), 1);
+    else if (status === TAB_STATUS.STOPPED && !tabUUID)
+    chrome.storage.local.get('suprome-tabs-v2', storage => {
+      chrome.storage.local.set({ 'suprome-tabs-v2': Object.assign({}, storage['suprome-tabs-v2'], { [tabUUID]: { ...storage['suprome-tabs-v2'][tabUUID], status } })});
+    });
   }
 
   // Get connection links to communicate between js files
@@ -128,7 +162,7 @@ chrome.storage.local.get('suprome', (_config) => {
       portPopup.onMessage.addListener((message) => {
         if (message.start && !message.configId) {
           const searchMap = {}
-          if (!botStatus['-1']) botStatus = Object.assign({}, botStatus, { ['-1']: {}});
+          if (!botStatus['-1']) botStatus = Object.assign({}, botStatus, { ['-1']: [] });
           for (let i = 0; !!config[i]; i++) {
             const { keyword, section } = config[i].product;
             searchMap[`${section}:${keyword}`] = [...(searchMap[`${section}:${keyword}`] || []), config[i]];
@@ -137,7 +171,7 @@ chrome.storage.local.get('suprome', (_config) => {
         } else if (message.start && message.configId) {
           const { keyword, section } = config[message.configId].product;
           if (!botStatus['-1']) botStatus = Object.assign({}, botStatus, { ['-1']: {}});
-          runTask(`${section}:${keyword}`, { [`${section}:${keyword}`]: [config[message.configId]] });
+          runTask(`${section}:${keyword}`, { [`${section}:${keyword}`]: [confg[message.configId]] });
         } else if (message.stop && !message.tabId) {
           for (const tabId in botStatus) stopBot(tabId);
         } else if (message.stop && message.tabId) {
@@ -161,7 +195,6 @@ chrome.storage.local.get('suprome', (_config) => {
             botStatus[tabId].colorsIndex = 0;
             setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), 500);
           } else if (message.error === ERRORS.CC_DECLINED || message.error === ERRORS.PRODUCT_SOLD_OUT) {
-            botStatus[tabId].colorsIndex = 0;
             botStatus[tabId].config.extension.checkoutDelay += botStatus[tabId].config.extension.checkoutDelayIncrease || 0;
             sendMessage(botStatus[tabId].portContentScript, { start: true, section: botStatus[tabId].config.product.section });
           } else if (message.loaded) {

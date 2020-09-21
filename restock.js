@@ -9,22 +9,22 @@ function createNotification(name, color, image) {
     iconUrl: image,
     title: 'Restock Alert!',
     message: `${name} (${color})`
-  }, () => {});
+  });
 }
 
 function setRestockMonitorStatus(enabled) {
-  chrome.storage.local.get('suprome-restock', config => {
-    chrome.storage.local.set({ 'suprome-restock': Object.assign({}, config['suprome-restock'], { enabled }) }, () => {});
+  chrome.storage.local.get('suprome-restock-v2', config => {
+    chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, config['suprome-restock-v2'], { enabled }) });
   });
 }
 
 function createMonitorInterval(interval) {
   monitorInterval = setInterval(() => {
-    chrome.storage.local.get('suprome-restock', updatedConfig => {
-      if (!updatedConfig['suprome-restock'].enabled) return;
+    chrome.storage.local.get('suprome-restock-v2', updatedConfig => {
+      if (!updatedConfig['suprome-restock-v2'].enabled) return;
       const newState = {};
-      log = updatedConfig['suprome-restock'].log;
-      lastState = updatedConfig['suprome-restock'].lastState;
+      log = updatedConfig['suprome-restock-v2'].log;
+      lastState = updatedConfig['suprome-restock-v2'].lastState;
       $.get('https://www.supremenewyork.com/shop/all').then(e => {
         const notSoldout = $($.parseHTML(e)).find('article a:not(:has(.sold_out_tag))');
         notSoldout.each(index => {
@@ -32,37 +32,34 @@ function createMonitorInterval(interval) {
           if (Object.keys(lastState).length && !lastState[href]) promises.push(href);
           newState[href] = {};
         });
-        chrome.storage.local.set({ 'suprome-restock': Object.assign({}, updatedConfig['suprome-restock'], { lastState: newState}) }, _ => {});
+        chrome.storage.local.set({ 'suprome-restock-v2': Object.assign({}, updatedConfig['suprome-restock-v2'], { lastState: newState }) });
       });
     });
   }, interval);
 }
 
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes['suprome-restock']) {
-    clearInterval(monitorInterval);
-    createMonitorInterval(changes['suprome-restock'].newValue.restockMonitorDelay);
-  }
-});
-
-chrome.storage.local.get('suprome-restock', (_config) => {
-  createMonitorInterval(_config['suprome-restock'].restockMonitorDelay);
-  setInterval(() => {
-    const now = (new Date).toString();
-    if (promises.length) {
-      const nextRequestUrl = promises.shift();
-      $.get(nextRequestUrl).then((product) => {
-        const prod = $($.parseHTML(product));
-        const productUrl = nextRequestUrl;
-        const productName = prod.find('[itemprop="name"]').text();
-        const productColor = prod.find('[itemprop="model"]').text();
-        const productImage = `https:${prod.find('[itemprop="image"]')[0].attributes['src'].value}`;
-        const productSmallImage = `https:${prod.find('a.selected > img')[0].attributes['src'].value}`;
-        createNotification(productName, productColor, productSmallImage);
-        chrome.storage.local.get('suprome-restock-logs', config => {
-          chrome.storage.local.set({'suprome-restock-logs': [{productName, productColor, productImage, productUrl, date: now}, ...(config['suprome-restock-logs'] || [])]}, () => {});
-        });
+setInterval(() => {
+  const now = (new Date).toString();
+  if (promises.length) {
+    const nextRequestUrl = promises.shift();
+    $.get(nextRequestUrl).then((product) => {
+      const prod = $($.parseHTML(product));
+      const productUrl = nextRequestUrl;
+      const productName = prod.find('[itemprop="name"]').text();
+      const productColor = prod.find('[itemprop="model"]').text();
+      const productImage = `https:${prod.find('[itemprop="image"]')[0].attributes['src'].value}`;
+      const productSmallImage = `https:${prod.find('a.selected > img')[0].attributes['src'].value}`;
+      createNotification(productName, productColor, productSmallImage);
+      chrome.storage.local.get('suprome-restock-v2-logs', config => {
+        chrome.storage.local.set({'suprome-restock-v2-logs': [{productName, productColor, productImage, productUrl, date: now}, ...(config['suprome-restock-v2-logs'] || [])]});
       });
-    }
-  }, 150);
+    });
+  }
+}, 100);
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes['suprome-restock-v2']) {
+    clearInterval(monitorInterval);
+    createMonitorInterval(changes['suprome-restock-v2'].newValue.restockMonitorDelay);
+  }
 });
