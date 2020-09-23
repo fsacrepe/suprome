@@ -62,7 +62,7 @@ chrome.webRequest.onCompleted.addListener((r) => {
     findProduct: true, 
     keyword: botStatus[tabId].config.product.keyword,
   };
-}, { urls: productSectionURLs }, []);
+}, { urls: ['https://www.supremenewyork.com/shop/all/*'] }, []);
 
 chrome.webRequest.onCompleted.addListener((r) => {
   const { tabId } = r;
