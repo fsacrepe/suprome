@@ -129,7 +129,9 @@ chrome.runtime.onMessage.addListener((message) => {
 })
 
 const injectCode = (tabId) => {
+  if ($('#suprome-script').length) return;
   const script = document.createElement('script');
+  script.id = 'suprome-script';
   script.textContent = `
   (() => {
     let tempCookies = {};
