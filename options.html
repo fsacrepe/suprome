@@ -28,11 +28,14 @@
           <li class="nav-item">
             <a class="nav-link" href="#proxy" data-toggle="tab" role="tab" aria-controls="proxy" aria-selected="false">
               Proxy
-              <span class="badge badge-warning">Beta</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#global-config" data-toggle="tab" role="tab" aria-controls="global-config" aria-selected="false">
+              Global config
             </a>
           </li>
         </ul>
-        <button id="compileConfigBtn" type="button" class="btn btn-warning">Reload Bot</button>
       </div>
     </nav>
     <div class="tab-content">
@@ -375,6 +378,26 @@
                 <button id="proxyListConnectBtn" type="button" class="btn btn-primary mb-2 mr-2">Connect</button>
                 <button id="proxyListAddBtn" type="button" class="btn btn-success mb-2">Add</button>
               </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="global-config" role="tabpanel" aria-labelledby="global-config-tab" style="padding: 2% 2%;">
+        <h1>Global config</h1>
+        <div class="mt-4">
+          <ul class="list-group">
+            <li class="list-group-item">
+              <h5>Discord webhook URL</h5>
+              <form class="form-inline">
+                <div class="form-group w-50 mr-2" style="padding-left: 0;">
+                  <input type="text" class="form-control col" id="discordWebhook" placeholder="Discord Webhook URL" />
+                </div>
+                <button id="saveDiscordWebhookBtn" type="button" class="btn btn-success">Add</button>
+              </form>
+            </li>
+            <li class="list-group-item">
+              <h5>Any issue with the bot ?</h5>
+              <button id="compileConfigBtn" type="button" class="btn btn-warning">Reload Bot</button>
             </li>
           </ul>
         </div>

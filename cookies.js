@@ -26,8 +26,9 @@ function buildCookies(tabId, requestHeaders, browserCookies = null) {
       for (let cookieName in requestCookies) requestCookiesArray = [ ...requestCookiesArray, `${cookieName}=${requestCookies[cookieName]}`];
       return { name: 'Cookie', value: requestCookiesArray.join('; ') };
     }
+    console.log(header.name);
     return header;
-  });
+  })
 }
 
 chrome.webRequest.onBeforeSendHeaders.addListener((details) => {

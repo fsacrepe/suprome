@@ -201,6 +201,7 @@ chrome.storage.local.get('suprome-v2', (_config) => {
             sendMessage(botStatus[tabId].portContentScript, botStatus[tabId].next);
             botStatus[tabId].next = null;
           } else if (message.done) {
+            chrome.runtime.sendMessage(null, { sender: 'background', type: 'SUCCESSFUL_ORDER', tabId, ...message.payload })
             delete botStatus[tabId];
           }
         });

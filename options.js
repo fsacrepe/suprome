@@ -329,6 +329,19 @@ const initProxyList = () => {
   });
 }
 
+const setDiscordWebhook = () => {
+  const webhookUrl = $('#discordWebhook').val();
+  chrome.storage.local.set({ 'suprome-v2-discord-webhook': webhookUrl });
+}
+
+const initDiscordWebhook = () => {
+  chrome.storage.local.get('suprome-v2-discord-webhook', (config) => {
+    const webhhookUrl = config['suprome-v2-discord-webhook'];
+    if (webhhookUrl && webhhookUrl.length) $('#saveDiscordWebhookBtn').html('Edit');
+    $('#discordWebhook').val(config['suprome-v2-discord-webhook']);
+  });
+}
+
 const compileConfig = () => {
   chrome.storage.local.get(['suprome-tabs-v2', 'suprome-profiles-v2'], storage => {
     const compiled = [];
@@ -348,6 +361,7 @@ const initAll = () => {
   initTabs();
   initProxyList();
   initMonitorConfig();
+  initDiscordWebhook();
   chrome.storage.local.get(['suprome-restock-v2', 'suprome-restock-v2-logs'], storage => {
     initRestockCards(storage['suprome-restock-v2-logs']);
   });
@@ -365,6 +379,7 @@ $('#proxyListConnectBtn').click(() => {connectToProxy($('#newProxy').val())});
 $('#clearMonitorHistoryBtn').click(clearMonitorHistory);
 $('#restockMonitorToggle').click(changeMonitorState);
 $('#saveRestockMonitorBtn').click(setMonitorConfig);
+$('#saveDiscordWebhookBtn').click(setDiscordWebhook);
 $(document).ready(initAll);
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -380,4 +395,5 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   else if (changes['suprome-proxy-v2']) initProxyList();
   else if (changes['suprome-restock-v2']) initMonitorConfig();
   else if (changes['suprome-restock-v2-logs']) initRestockCards(changes['suprome-restock-v2-logs'].newValue);
+  else if (changes['suprome-v2-discord-webhook']) initDiscordWebhook();
 });

@@ -12,6 +12,18 @@ function isSoldOut() {
   return $('.out_of_stock').length > 0;
 }
 
+function isSuccessfulCheckout() {
+  return $('#confirmation').length > 0;
+}
+
+function getSuccessfulCheckoutInfos() {
+  const orderId = $(`#confirmation strong:contains('#')`)[0].innerText;
+  const image = $(`.cart-image img`)[0].attributes.src.value;
+  const details = $('.cart-description').first()[0].innerText;
+  const price = $('#total')[0].innerText;
+  return { orderId, image, details, price };
+}
+
 function goToProductSection(section) {
   location.href = `https://www.supremenewyork.com/shop/all/${section}`;
 }
@@ -60,8 +72,9 @@ function manageCheckoutResponse() {
     return port.postMessage(createMessageBody({ error: 'CC_DECLINED' }));
   else if (isSoldOut())
     return port.postMessage(createMessageBody({ error: 'PRODUCT_SOLD_OUT' }));
-  else
-    return port.postMessage(createMessageBody({ done: true }));
+  else if (isSuccessfulCheckout()) {
+    return port.postMessage(createMessageBody({ done: true, payload: { ...getSuccessfulCheckoutInfos() } }));
+  }
 }
 
 function fillFormAndOrder(billing, cc, checkoutDelay) {
