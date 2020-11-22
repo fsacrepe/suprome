@@ -185,7 +185,7 @@ chrome.storage.local.get('suprome-v2', (_config) => {
         botStatus[tabId].portContentScript.onMessage.addListener((message) => {
           if (message.error === ERRORS.COLOR_SOLD_OUT) {
             botStatus[tabId].colorsIndex++;
-            if (botStatus[tabId].colorsIndex === botStatus[tabId].config.product.colors.length) {
+            if (botStatus[tabId].colorsIndex >= botStatus[tabId].config.product.colors.length) {
               botStatus[tabId].colorsIndex = 0;
               setTimeout(() => sendMessage(botStatus[tabId].portContentScript, { reload: true }), botStatus[tabId].config.extension.restockReloadDelay);
             } else {
