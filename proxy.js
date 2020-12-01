@@ -17,7 +17,7 @@ function setProxyConfig() {
       mode: 'pac_script',
       pacScript: {
         data: "function FindProxyForURL(url, host) {\n" +
-        "  var proxies = ['DIRECT'," + config['suprome-proxy-v2'].map(a => `'PROXY ${a}; DIRECT'`).join(',') + "];" +
+        "  var proxies = [" + config['suprome-proxy-v2'].map(a => `'PROXY ${a}; DIRECT'`).join(',') + "];" +
         "  if (dnsDomainIs(host, '.supremenewyork.com') || dnsDomainIs(host, '.mon-ip.io'))\n" +
         "    return proxies[Math.floor(Math.random() * proxies.length)];\n" +
         "  return 'DIRECT';\n" +
