@@ -51,6 +51,7 @@ const createProfile = (uuid = null) => {
     address2: $('#billingAddress2').val(),
     address3: $('#billingAddress3').val(),
     city: $('#billingCity').val(),
+    state: $('#billingState').val(),
     zip: $('#billingZip').val(),
     country: $('#billingCountry').val(),
   };
@@ -84,6 +85,7 @@ const setProfileData = (uuid = null, profile = null) => {
   $(`#billingAddress2`).val(!!profile ? profile.billing.address2 : '');
   $(`#billingAddress3`).val(!!profile ? profile.billing.address3 : '');
   $(`#billingCity`).val(!!profile ? profile.billing.city : '');
+  $(`#billingState`).val(!!profile ? profile.billing.state : '');
   $(`#billingZip`).val(!!profile ? profile.billing.zip : '')
   $(`#billingCountry`).val(!!profile ? profile.billing.country : '');
   $(`#ccType`).val(!!profile ? profile.cc.type : '');

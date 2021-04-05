@@ -72,6 +72,7 @@ function fillFormAndOrder(billing, cc, checkoutDelay) {
   $('input[name="order[billing_address_2]"]').val(billing.address2);
   $('input[name="order[billing_address_3]"]').val(billing.address3);
   $('input[name="order[billing_city]"]').val(billing.city);
+  $('input[name="order[billing_state]"').val(billing.state);
   $('input[name="order[billing_zip]"]').val(billing.zip);
   $('select[name="order[billing_country]"]').val(billing.country);
   $('select[name="credit_card[type]"]').val(cc.type);
