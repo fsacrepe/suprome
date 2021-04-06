@@ -14,6 +14,7 @@ It supports multitasking on same instance, proxies and multiple profiles. As a b
   - [Restock monitor](#restock-monitor)
 - [Cooking](#cooking)
 - [Contributing](#contributing)
+- [Contact](#contact)
 - [License](#license)
 
 ### How to install
@@ -146,11 +147,18 @@ As Chrome takes a good amount of RAM for each tab, I recommend setting low check
 
 Bot might get stuck sometimes, because Supreme's site sometimes gets weird, so be sure to <u>check each tab regularly</u>. Also you want to have trusted Gmails so you do not get any captcha, on my personnals, I used to have a captcha every 15 checkout, as the bot retries on payment fail, it could happen quite quick so again, make sure you **<u>check your tabs</u>** :eyes: 
 
-
+Feel free to mention my [Twitter](https://twitter.com/glbemile) if you cook ! I'd be glad to see that the project has been useful for someone :smile:
 
 ### Contributing
 
 I do not intend to work anymore on this bot, but if you do, I'd be glad to review your PRs, just make sure to document it so I can understand what you want to update :smiley: 
+You can also [buy me a coffee](buymeacoffee.com/fsacrepe) so I can keep doing my stuff on my spare time, any project that I do not use for business will get open sourced
+
+### Contact
+
+If you'd like to reach me, here are some ways to get to me
+  - Discord: GLOBAL EMILE#5264
+  - Twitter: https://twitter.com/glbemile
 
 ### License
 
