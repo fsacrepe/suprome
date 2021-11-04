@@ -82,7 +82,7 @@ chrome.webRequest.onCompleted.addListener((r) => {
   const { tabId } = r;
   if (!Object.keys(botStatus).length) return;
   sendMessage(botStatus[tabId].portContentScript, { goToCheckout: true });
-}, { urls: [`https://www.supremenewyork.com/shop/*/add`] }, []);
+}, { urls: [`https://www.supremenewyork.com/shop/*/atc`] }, []);
 
 chrome.webRequest.onCompleted.addListener((r) => {
   const { tabId } = r;

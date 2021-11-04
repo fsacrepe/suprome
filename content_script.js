@@ -23,7 +23,7 @@ function selectProductFromAll(keyword) {
 }
 
 function selectColor(color) {
-  const foundColor = color ? $(`a[data-style-name*="${color}"][data-sold-out="false"]`) : $('a[data-sold-out="false"]');
+  const foundColor = color ? $(`button[data-style-name*="${color}"][data-sold-out="false"]`) : $('button[data-sold-out="false"]');
   if (!foundColor.length) return port.postMessage(createMessageBody({ error: 'COLOR_SOLD_OUT' }));
   foundColor[0].click();
 }
@@ -77,10 +77,10 @@ function fillFormAndOrder(billing, cc, checkoutDelay) {
   $('select[name="order[billing_country]"]').val(billing.country);
   $('select[name="credit_card[type]"]').val(cc.type);
   if (cc.type !== 'paypal') {
-    $('input[name="credit_card[cnb]"]').val(cc.cnb);
+    $('input[name="credit_card[number]"]').val(cc.cnb);
     $('select[name="credit_card[month]"]').val(cc.month);
     $('select[name="credit_card[year]"]').val(cc.year);
-    $('input[name="credit_card[ovv]"]').val(cc.cvv);
+    $('input[name="credit_card[verification_value]"]').val(cc.cvv);
   }
   $('label.has-checkbox.terms').click()
   setTimeout(() => {
