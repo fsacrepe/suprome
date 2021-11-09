@@ -75,8 +75,10 @@ function fillFormAndOrder(billing, cc, checkoutDelay) {
   $('input[name="order[billing_state]"').val(billing.state);
   $('input[name="order[billing_zip]"]').val(billing.zip);
   $('select[name="order[billing_country]"]').val(billing.country);
-  $('select[name="credit_card[type]"]').val(cc.type);
-  if (cc.type !== 'paypal') {
+  if (cc.type === 'paypal') {
+    $('label[id="payment_type_label_paypal"]').click();
+  } else {
+    $('label[id="payment_type_label_credit_card"]').click();
     $('input[name="credit_card[number]"]').val(cc.cnb);
     $('select[name="credit_card[month]"]').val(cc.month);
     $('select[name="credit_card[year]"]').val(cc.year);
